@@ -1,0 +1,61 @@
+body {
+	margin: 0px;
+	padding: 0px;
+}
+.canvas {
+    width: 4000px;
+    height: 4000px;
+}
+
+#container {
+
+}
+
+.line {
+ 	stroke:rgb(255,0,0);
+	stroke-width:4;
+        z-index: 2;
+}
+
+.port {
+	width: 10px;
+	height: 10px;
+        position: absolute;
+        border-width: thin;
+        border-style: solid;
+	top: 50px;
+}
+
+.input {
+	border-color: rgb(0, 255, 0);
+}
+
+.output {
+	border-color: rgb(0, 0, 255);
+}
+
+.json {
+	height: 400px;
+	width: 600px;
+        position: absolute;
+        border-width: thin;
+        border-style: solid;
+        border-color: #000000;
+}
+
+.editor {
+	position: absolute;
+	top: 60px;
+	left: 0px;
+	right: 0px;
+	bottom: 0px;
+}
+
+#menu.fixed {
+    border-bottom: 5px solid #ffffff;
+    width: 100%;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    position: fixed;
+}

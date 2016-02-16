@@ -1,0 +1,60 @@
+  <head>
+	<title>JSON Demons-tration</title>
+	<script src="http://code.jquery.com/ui/1.11.4/jquery-ui.min.js" type="text/javascript"></script>
+        <script src="http://d1n0x3qji82z53.cloudfront.net/src-min-noconflict/ace.js" type="text/javascript" charset="utf-8"></script>
+  </head>
+
+  <body>
+	{{> buttons }}
+	{{> canvas }}
+  </body>
+
+  <template name="buttons">
+    <div id="menu">
+    <span>
+    <input name="tools" type="radio" id="delete">Subtract-
+    <input name="tools" type="radio" id="makeJSON">Add+
+    <input name="tools" type="radio" id="sequenceJSON">Record o_o
+    <input name="tools" type="radio" id="resetJSON">Reset
+    <input name="tools" type="radio" id="loadJSON">Load[^]
+    <input name="tools" type="radio" id="editJSON">Edit/
+    <input name="tools" type="radio" id="saveJSON">Save[V]
+    <input name="tools" type="radio" id="input">+Input
+    <input name="tools" type="radio" id="output">Output+
+    <input name="tools" type="radio" id="relationship">Connect&gt;&lt;
+    <input name="tools" type="radio" id="drag">Move&lt;--
+    </span>
+    </div>
+  </template>
+
+  <template name="json">
+	<div draggable="true" class="json draggable" style="left:{{left}}px;top:{{top}}px" id="json_{{_id}}">
+		{{title}}<input type="file" id="file_{{_id}}" accept="text/json"/>
+		<hr/>
+		<div class="editor" id="text_{{_id}}">{{data}}</div>
+	</div>
+  </template>
+
+  <template name="port">
+	<div draggable="true" class="port {{type}} draggable" style="left:{{left}}px;top:{{top}}px" id="port_{{_id}}">
+	</div>
+  </template>
+  <template name="line">
+	<line draggable="true" class="line draggable" x1="{{x1}}" y1="{{y1}}" x2="{{x2}}" y2="{{y2}}" id="line_{{_id}}"/>
+  </template>
+
+  <template name="canvas">
+  <div class="canvas draggableContainer" id="container">
+  {{#each jsons}}
+	{{> json }}
+  {{/each}}
+  {{#each ports}}
+	{{> port }}
+  {{/each}}
+  <svg class="canvas">
+	  {{#each lines}}
+		{{> line }}
+	  {{/each}}
+  </svg>
+  </div>
+  </template>
