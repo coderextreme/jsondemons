@@ -3,8 +3,8 @@ body {
 	padding: 0px;
 }
 .canvas {
-    width: 4000px;
-    height: 4000px;
+    width: 900px;
+    height: 900px;
 }
 
 #container {
@@ -18,8 +18,6 @@ body {
 }
 
 .port {
-	width: 10px;
-	height: 10px;
         position: absolute;
         border-width: thin;
         border-style: solid;
@@ -35,8 +33,6 @@ body {
 }
 
 .json {
-	height: 400px;
-	width: 600px;
         position: absolute;
         border-width: thin;
         border-style: solid;
@@ -58,4 +54,8 @@ body {
     left: 0;
     top: 0;
     position: fixed;
+}
+
+.webfont {
+	font-family:'Orbitron';
 }

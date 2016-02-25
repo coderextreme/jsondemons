@@ -15,6 +15,11 @@ $(document).ready(function () {
   });
 });
 
+var ui = {};
+ui.position = {};
+ui.originalPosition = {};
+ui.offset = {};
+
 var canvas = null;
 ////////////////  Jquery helpers /////////////////////////////
 
@@ -36,7 +41,7 @@ function computeInfo(event) {
 }
 
 function getJsonInput(json_id) {
-    return '#file_' + json_id;
+    return '#file';
 }
 
 function getJsonFromPort(port) {
@@ -44,46 +49,13 @@ function getJsonFromPort(port) {
 }
 
 function getTextFromJson(json_id) {
-    return '#text_' + json_id;
+    return document.querySelector('#text_' + json_id).getAttribute("string");
 }
 
 function getPortDiv(port) {
     var portDiv = $("#port_" + port._id);
     return portDiv;
 }
-//////////   Draggging  //////////////////
-function dragStop() {
-    $('.json')
-	.draggable()
-	.draggable('disable');
-    $('.port')
-	.draggable()
-	.draggable('disable');
-    $('.line')
-	.draggable()
-	.draggable('disable');
-}
-
-function dragStart(type, move, stop) {
-    $(type)
-	.draggable()
-	.draggable('enable')
-        .draggable({
-            start: function(event, ui) {
-		stop(type, event, ui);
-            },
-            drag: function(event, ui) {
-		// register the ports we've already moved with seenports
-		seenports = {};
-		move(type, event, ui);
-		seenports = {};
- 		// drawLines();
-            },
-            stop: function(event, ui) {
-		stop(type, event, ui);
-            }
-        });
-};
 
 //////////   Canvas and Buttons  //////////////////
 
@@ -110,9 +82,6 @@ CurrentFunction.prototype = {
     setFunction : function(name, func) {
 	this.context.func = func;
 	this.context.name = name;
-    },
-    preventEvents : function(event) {
-	event.preventDefault();
     },
     callFunction : function(event) {
 	if (typeof this.context !== 'object') {
@@ -156,16 +125,16 @@ CurrentFunction.prototype = {
     
 };
 
-var currentFunction = new CurrentFunction();
+Template.currentFunction = new CurrentFunction();
 
 /////////  EVENTS /////////////
 var eventIdx = 0;
 
 Template.canvas.events({
-    'mousedown #container' : function(event) {
-	console.log('canvas event', ++eventIdx);
-	// currentFunction.preventEvents(event);
-        currentFunction.callFunction(event);
+    'click #container' : function(event) {
+	// event.preventDefault();
+	// console.log('canvas event', ++eventIdx, event.target.id);
+        Template.currentFunction.callFunction(event);
     }
 });
 
@@ -176,28 +145,27 @@ var json1 = null;
 
 Template.buttons.events({
     'click #resetJSON' : function() {
-        dragStop();
-        currentFunction.setFunction('reset', function(event) {
+        Template.currentFunction.setFunction('reset', function(event) {
             resetJson(event);
         });
     },
     'click #loadJSON' : function() {
-	console.log("setting load function");
-        dragStop();
-        currentFunction.setFunction('load', function(event) {
-	    console.log("Calling load function");
-            loadJson(getJson(event)._id);
+	// console.log("setting load function");
+        Template.currentFunction.setFunction('load', function(event) {
+	    if (getJson(event) != null) {
+		    console.log("load", event, getJson(event));
+		    loadJson(getJson(event)._id);
+	    }
         });
     },
     'click #makeJSON' : function() {
-        dragStop();
-        currentFunction.setFunction('makeJSON', function(event) {
+        Template.currentFunction.setFunction('makeJSON', function(event) {
             makeJson(event);
         });
     },
     'click #delete' : function() {
-        dragStop();
-        currentFunction.setFunction('delete', function(event) {
+        Template.currentFunction.setFunction('delete', function(event) {
+	    // console.log('deleting', event.target.id);
             var json = getJson(event);
 	    deleteJson(json);
 
@@ -211,37 +179,28 @@ Template.buttons.events({
         });
     },
     'click #drag' : function(event) {
-	    dragStart('.json', moveJson, stopJson);
-	    dragStart('.port', movePort, stopPort);
-	    dragStart('.line', moveLine, stopLine);
-        currentFunction.setFunction('drag', function(event) {
-	    console.log("in drag");
-	    dragStart('.json', moveJson, stopJson);
-	    dragStart('.port', movePort, stopPort);
-	    dragStart('.line', moveLine, stopLine);
+        Template.currentFunction.setFunction('drag', function(event) {
         });
     },
     'click #saveJSON' : function() {
-        dragStop();
-        currentFunction.setFunction('saveJSON', function(event) {
+        Template.currentFunction.setFunction('saveJSON', function(event) {
             var json = getJson(event);
             if (json != null) {
 	    	if (typeof json.rawdata !== 'undefined' && json.rawdata !== null) {
 	            var data = json.rawdata;
 		    var savedJson = makeJson(event);
-		    Jsons.update({"_id": savedJson._id}, {$set: { left: json.left+600, data: data }});
+		    Jsons.update({"_id": savedJson._id}, {$set: { x: json.x+6, data: data }});
                     printJson(savedJson._id);
 		} else {
-			console.log("No raw data.  Make a change");
+			// console.log("No raw data.  Make a change");
 		}
             } else {
-		console.error("Save not a JSON", event.target.id);
+		// console.error("Save not a JSON", event.target.id);
 	    }
 	});
     },
     'click #editJSON' : function() {
-        dragStop();
-        currentFunction.setFunction('editJSON', function(event) {
+        Template.currentFunction.setFunction('editJSON', function(event) {
             var json = getJson(event);
             if (json != null) {
 	        startEditor(json);
@@ -251,34 +210,35 @@ Template.buttons.events({
         });
     },
     'click #input' : function() {
-        dragStop();
-        currentFunction.setFunction('input', function(event) {
+        Template.currentFunction.setFunction('input', function(event) {
             var json = getJson(event);
             makePort(json, "input");
         });
     },
     'click #output' : function() {
-        dragStop();
-        currentFunction.setFunction('output', function(event) {
+        Template.currentFunction.setFunction('output', function(event) {
             var json = getJson(event);
 	    makePort(json, "output");
         });
     },
     'click #relationship' : function() {
-        dragStop();
-        currentFunction.setFunction('relationship', function(event) {
-	    // Register seenports here, used in 'make' for line
-	    seenports = {};
+	port0 = null;
+	port1 = null;
+        Template.currentFunction.setFunction('relationship', function(event) {
+	    // Register Template.seenports here, used in 'make' for line
+	    Template.seenports = {};
             var port = getPort(event);
 	    if (port != null) {
 		if (port0 == null) {
 			port0 = port;
 	    	} else {
 			port1 = port;
-			if (port0.type !== port1.type) {
-				makeLine(port0, port1);
-			} else {
-				alert("Cannot connect two similar ports");
+			if (port0._id != port1._id) {
+				if (port0.type !== port1.type) {
+					makeLine(port0, port1);
+				} else {
+					alert("Cannot connect two similar ports");
+				}
 			}
 			port0 = null;
 			port1 = null;
@@ -287,11 +247,10 @@ Template.buttons.events({
 	});
     },
     'click #sequenceJSON' : function() {
-        dragStop();
-        currentFunction.setFunction('sequence', function(event) {
+        Template.currentFunction.setFunction('sequence', function(event) {
             var json = getJson(event);
 	    if (json != null) {
-		    currentFunction.setRecorder(function(rec) {
+		    Template.currentFunction.setRecorder(function(rec) {
 			try {
 				var x = rec.event.pageX || null;
 				var y = rec.event.pageY || null;
@@ -299,8 +258,9 @@ Template.buttons.events({
 				var ti = computeInfo(rec.event);
 				
 				if (typeof rec.ui === 'object' && typeof rec.ui.position === 'object') {
-					x = rec.ui.position.left;
-					y = rec.ui.position.top;
+					x = rec.ui.position.x;
+					y = rec.ui.position.y;
+					z = rec.ui.position.z;
 				}
 				Jsons.update({_id: json._id}, {$push: {data:
 				    [JSON.stringify([rec.command,
@@ -309,6 +269,7 @@ Template.buttons.events({
 					 rec.event.target.result,
 					 x,
 					 y,
+					 z, 
 					 rec.event.srcElement], null, 2)]}});
                     		printJson(json._id);
 				return true;
@@ -318,7 +279,7 @@ Template.buttons.events({
 			}
 		    });
             } else {
-		currentFunction.setRecorder(null);
+		Template.currentFunction.setRecorder(null);
 		alert("Couldn't record to", event.target.id, "try a JSON desktop object");
             }
 	});
@@ -329,7 +290,9 @@ Template.buttons.events({
 
 Template.json.helpers({
     'get': function(event) {
+	// console.log('getJson event', event);
 	var ti = computeInfo(event);
+	// console.log('ti', ti);
 	var json =  Jsons.findOne(ti.id);
 	if (typeof json === 'undefined'
 	  && ti.type !== 'json'
@@ -358,7 +321,8 @@ Template.json.helpers({
 	});
     },
     'make': function (event) {
-        var id = Jsons.insert({left: event.pageX, top: event.pageY, data: [], ports: [] });
+	// console.log('creating JSON', event);
+        var id = Jsons.insert({x: event.pageX/11-26, y: 32-event.pageY/11, z:0, data: [], ports: [] });
         var title = Jsons.update({"_id": id}, {$set: {title: id}});
 	if (title === 0) {
 		("Couldn't find the JSON you just created");
@@ -366,20 +330,20 @@ Template.json.helpers({
 	printJson(id);
         var json = Jsons.findOne(id);
         renderJson(Jsons.find().count() - 1, json);
-	console.log(id);
+	// console.log(id);
         return json;
     },
     'load': function(json_id) {
       var fileElement = document.querySelector(getJsonInput(json_id));
-      console.log("file id", getJsonInput(json_id));
+      // console.log("file id", getJsonInput(json_id));
       if (typeof json_id !== 'undefined' && fileElement !== null) {
 	fileElement.addEventListener("change", function() {
-	    console.log("change is", this);
+	    // console.log("change is", this);
 	    var file = this.files[0];
 	    var fr = new FileReader();
 	    fr.onload = function(e) {
 		var lines = e.target.result;
-		$(getTextFromJson(json_id)).html(lines);
+		Jsons.update({"_id": json_id}, {$set: { data: lines }});
 	    };
 	    fr.readAsText(file);
 	}, false);
@@ -388,7 +352,6 @@ Template.json.helpers({
       }
     },
     'render': function(index, json) {
-        Jsons.update({"_id": json._id},{left: 100, top: 100 });
         if (typeof json.ports !== 'undefined') {
 		// something got lost...
                 Jsons.update({"_id": json._id}, {$set: {ports: [], title: json._id }});
@@ -398,7 +361,6 @@ Template.json.helpers({
 	$.each(json.ports, renderPort);
     },
     'edit': function(json) {
-        dragStop();
         var editor = ace.edit(getTextFromJson(json._id).substr(1));
         editor.setTheme("ace/theme/monokai");
         editor.getSession().setMode("ace/mode/javascript");
@@ -408,32 +370,47 @@ Template.json.helpers({
         });
         return editor;
     },
-    'stop': function(type, event, ui) {
-	moveJson(type, event, ui);
-        currentFunction.record({command:type, event:event, ui:ui});
+/*
+    'stop': function(json) {
+	// implement stop
+	Template.seenports = {};
+	$.each(json.ports, function(pindex, port_id) {
+		// only the JSON location should change the position of the port
+		var updated = Ports.update({"_id": port_id}, {$set: {
+			dx: 0,
+			dy: 0,
+			dz: 0
+		}});
+	        port = Ports.findOne(port_id);
+	        printPort(port_id);
+		updatePort(pindex, port, 0, 0, 0);
+	});
+        Template.currentFunction.record({command:'stop', object:json});
     },
+*/
     'move': function(type, event, ui) {
 	var json = getJson(event);
 	if (json !== null) {
-            Jsons.update({"_id": json._id}, {$set: {left: ui.position.left, top: ui.position.top}});
+            Jsons.update({"_id": json._id}, {$set: {x: ui.position.x, y: ui.position.y, z:ui.position.z}});
 	    printJson(json._id);
-	    seenports = {};
+	    Template.seenports = {};
 	    $.each(json.ports, function(pindex, port_id) {
 		// only the JSON location should change the position of the port
 		var updated = Ports.update({"_id": port_id}, {$set: {
 			dx: 0,
 			dy: 0,
+			dz: 0
 		}});
 	        port = Ports.findOne(port_id);
 	        printPort(port_id);
-		updatePort(pindex, port, 0, 0);
+		updatePort(pindex, port, 0, 0, 0);
 	    });
 	} else {
 		console.log("NO JSON", event);
 	}
      },
     'delete': function(json) {
-        if (json !== null) {
+        if (json !== null && typeof json !== 'undefined') {
             if (typeof json.ports !== 'undefined') {
                 // remove all ports from json
 	        $.each(json.ports, deletePort);
@@ -452,12 +429,15 @@ Template.port.helpers({
     'make': function(json, type) {
         if (json !== null) {
 	    // relative to the JSON object
-	    var offx = 602;
+	    var offx = 10;
+	    var color = "blue";
 	    if (type === "input") {
-		offx = -12;
+		offx = -10;
+		color = "green";
 	    }
 	    var offy = 0;
-	    var id = Ports.insert({type: type, left:json.left+offx, offx:offx, offy:offy, dx: 0, dy: 0, json_id: json._id, lines: []});
+	    var offz = 0;
+	    var id = Ports.insert({type: type, x:json.x+offx, z:json.z+offz, offx:offx, offy:offy, offz: offz, dx: 0, dy: 0, dz:0, json_id: json._id, color:color, lines: []});
 	    Jsons.update({"_id": json._id}, {$push: {ports: id }});
             printJson(json._id);
 	    var index = Ports.find({json_id: json._id, type: type, dx: 0, dy: 0 }).count()-1;
@@ -483,8 +463,9 @@ Template.port.helpers({
         var portDiv = getPortDiv(port);
 	var json = Jsons.findOne(port.json_id);
 	if (json != null) {
-		var portTop = json.top + 15 * index;
-		Ports.update({"_id": port._id}, {$set: {top: portTop}});
+		var portTop = json.y + 15 - 2.1 * index;
+		// console.log('port y', portTop);
+		Ports.update({"_id": port._id}, {$set: {y: portTop}});
 	    	printPort(port._id);
 	}
 
@@ -494,26 +475,30 @@ Template.port.helpers({
             jsonDiv.css("height", (jsonheight - divbottom) + "px");
         }
     },
-    'stop': function(type, event, ui) {
-	// console.log("stop ", ui);
-	movePort(type, event, ui);
-        currentFunction.record({command:type, event:event, ui:ui});
+/*
+    'stop': function(port) {
+	updatePort(0, port, 0, 0, 0);
+        Template.currentFunction.record({command:'stop', object:port});
     },
+*/
     'move': function(type, event, ui) {
         var port = getPort(event);
         if (port !== null) {
 	    var json = Jsons.findOne(port.json_id);
-	    var dx = ui.offset.left - ui.originalPosition.left;
-	    var dy = ui.offset.top - ui.originalPosition.top;
+	    var dx = ui.offset.x;
+	    var dy = ui.offset.y;
+	    var dz = ui.offset.z;
             Ports.update({"_id": port._id}, {$set: {
-		left: ui.position.left,
-		top: ui.position.top,
-		offx: ui.position.left - json.left,
-		offy: ui.position.top - json.top
+		x: ui.position.x,
+		y: ui.position.y,
+		z: ui.position.z,
+		offx: ui.position.x - json.x,
+		offy: ui.position.y - json.y,
+		offz: ui.position.z - json.z
 	    }});
 	    port = Ports.findOne(port._id);
 	    printPort(port._id);
-	    updatePort(0, port, dx, dy);
+	    updatePort(0, port, dx, dy, dz);
         }
     },
     'delete': function(index, port_id) {
@@ -580,9 +565,11 @@ function startEditor(json) {
     return Template.json.__helpers.get('edit')(json);
 }
 
-function stopJson(type, event, ui) {
-    Template.json.__helpers.get('stop')(type, event, ui);
+/*
+function stopJson(json) {
+    Template.json.__helpers.get('stop')(json);
 }
+*/
 
 function moveJson(type, event, ui) {
     Template.json.__helpers.get('move')(type, event, ui);
@@ -610,9 +597,11 @@ function blaze(position, template, port, parent) {
     Template.port.__helpers.get('blaze')(position, template, port, parent);
 }
 
-function stopPort(type, event, ui) {
-    Template.port.__helpers.get('stop')(type, event, ui);
+/*
+function stopPort(port) {
+    Template.port.__helpers.get('stop')(port);
 }
+*/
 
 function movePort(type, event, ui) {
     Template.port.__helpers.get('move')(type, event, ui);
@@ -628,64 +617,75 @@ function drawLines() {
 }
 
 ///  dx dy how much something else changed port
-function updatePort(index, port, dx, dy) {
-	if (typeof seenports[port._id] === 'undefined') {
-		seenports[port._id] = true;
+function updatePort(index, port, dx, dy, dz) {
+	var bx = dx;
+	var by = dy;
+	var bz = dz;
+	if (typeof Template.seenports[port._id] === 'undefined') {
+		Template.seenports[port._id] = true;
 			// make a backup
-			var bx = dx;
-			var by = dy;
 			// if no delta, cancel out old line delta
-			if (dx === 0 && dy === 0) {
+			if (dx === 0 && dy === 0 && dz === 0) {
 				dx = port.dx;
 				dy = port.dy;
+				dz = port.dz;
 			}
 		var json = Jsons.findOne(port.json_id);
 		var offx = port.offx + dx - port.dx; 
 		var offy = port.offy + dy - port.dy;
-		var left = json.left + offx;
-		var top  = json.top  + offy;
+		var offz = port.offz + dz - port.dz;
+		var x = json.x + offx;
+		var y = json.y + offy;
+		var z = json.z + offz;
 		var updated = Ports.update({"_id": port._id}, {$set: {
-			left: left,
-			top: top,
+			x: x,
+			y: y,
+			z: z,
 			dx: bx,
 			dy: by,
+			dz: bz,
 			offx: offx,
-			offy: offy
+			offy: offy,
+			offz: offz
 		}});
 	        // printPort(port._id);
-		console.log(offx, offy);
 		if (updated !== 1) {
 			alert("Something wrong with update on", updated, "documents");
-		}
-		port = Ports.findOne(port._id);
-		if (typeof port.lines !== 'undefined') {
-			// console.log(port.lines);
-			$.each(port.lines, function(index, line_id) {
-				updateLine(index, line_id, bx, by, false);
-			});
 		}
 	} else {
 		console.log("Already seen", index, port._id);
 	}
+	port = Ports.findOne(port._id);
+	if (typeof port.lines !== 'undefined') {
+		$.each(port.lines, function(index, line_id) {
+			updateLine(index, line_id, 0, 0, 0, false);
+		});
+	}
 	return port;
 }
 
-var seenports = {};
+Template.seenports = {};
 
 //////////////
 Template.line.helpers({
     'make': function(port0, port1) {
 	if (port0 != null && port1 != null) {
-		console.log('Inserting ',port0._id, port1._id);
+		//console.log('Inserting ',port0._id, port1._id);
 		var id = Lines.insert({
 			port0:port0._id,
-			x1:port0.left+5,
-			y1:port0.top+0,
+			x1:port0.x+0,
+			y1:port0.y+0,
+			z1:port0.z+0,
 			port1:port1._id,
-			x2:port1.left+5,
-			y2:port1.top+0,
+			x2:(port1.x+port0.x)/2+0,
+			y2:(port1.y+port0.y)/2+0,
+			z2:(port1.z+port0.z)/2+0,
+			x3:port1.x+0,
+			y3:port1.y+0,
+			z3:port1.z+0,
 			dx:0,
-			dy:0
+			dy:0,
+			dz:0
 			 });
 		printLine(id);
 		Ports.update({"_id": port0._id}, {$push: {lines: id }});
@@ -707,27 +707,31 @@ Template.line.helpers({
     	return line;
     },
     'render': function(index, line) {
-	updateLine(index, line._id, 0, 0, false);
+	updateLine(index, line._id, 0, 0, 0, false);
     },
-    'stop': function(type, event, ui) {
-        var line = getLine(event);
+/*
+    'stop': function(line) {
         if (typeof line !== 'undefined' && line !== null) {
-	    seenports = {};
-	    updateLine(0, line._id, 0, 0, true);
+	    Template.seenports = {};
+	    updateLine(0, line._id, 0, 0, 0, true);
         }
-        currentFunction.record({command:type, event:event, ui:ui});
+        Template.currentFunction.record({command:'stop', object:line});
     },
+*/
     'move': function(type, event, ui) {
         var line = getLine(event);
         if (typeof line !== 'undefined' && line !== null) {
-	    seenports = {};
-	    var dx = ui.offset.left - ui.originalPosition.left;
-	    var dy = ui.offset.top - ui.originalPosition.top;
-	    console.log("delta", dx, dy, ui);
-	    updateLine(0, line._id, dx, dy, true);
+	    Template.seenports = {};
+	    var dx = ui.offset.x;
+	    var dy = ui.offset.y;
+	    var dz = ui.offset.z;
+	    console.log("delta", dx, dy, dz, ui);
+	    updateLine(0, line._id, dx, dy, dz, true);
+	    updateLine(0, line._id, 0, 0, 0, true);
         }
     },
-    'update': function(index, line_id, dx, dy, updatePorts) {
+    'update': function(index, line_id, dx, dy, dz, updatePorts) {
+	console.log('dxyz', dx, dy, dz);
 	var line = Lines.findOne(line_id);
 	if (typeof line !== 'undefined') {
 		var port0 = Ports.findOne(line.port0);
@@ -735,42 +739,28 @@ Template.line.helpers({
 		if (typeof port0 !== 'undefined' && typeof port1 !== 'undefined') {
 			// update as long as port being passed in is not the port
 			if (updatePorts) {
-				port0 = updatePort(0, port0, dx, dy);
-				port1 = updatePort(1, port1, dx, dy);
+				port0 = updatePort(0, port0, dx, dy, dz);
+				port1 = updatePort(1, port1, dx, dy, dz);
 			}
-
-			// make a backup
-			var bx = dx;
-			var by = dy;
-			// if no delta, cancel out old line delta
-			if (dx === 0 && dy === 0) {
-				dx = line.dx;
-				dy = line.dy;
-			}
-			var x1 = port0.left + 5 + dx - line.dx;
-			var y1 = port0.top  + 0 + dy - line.dy;
-			var x2 = port1.left + 5 + dx - line.dx;
-			var y2 = port1.top  + 0 + dy - line.dy;
-			if (x1 < 0) {
-				x1 = 100;
-			}
-			if (x2 < 0) {
-				x2 = 500;
-			}
-			if (y1 < 0) {
-				y1 = 100;
-			}
-			if (y2 < 0) {
-				y2 = 500;
-			}
+			var x1 = port0.x;
+			var y1 = port0.y;
+			var z1 = port0.z;
+			var x3 = port1.x;
+			var y3 = port1.y;
+			var z3 = port1.z;
+			var x2 = (x1+x3)/2;
+			var y2 = (y1+y3)/2;
+			var z2 = (z1+z3)/2;
 			var update = Lines.update({"_id": line_id}, {$set: {
-				x1: x1, y1: y1, x2: x2, y2: y2,
-				dx: bx,
-				dy: by
+				x:-dx, y:-dy, z:-dz,
+				x1: x1, y1: y1, z1: z1,
+				x2: x2, y2: y2, z2: z2,
+				x3: x3, y3: y3, z3: z3
 			}});
 			// printLine(line._id);
 			if (update === 0) {
 				// toss it
+				console.log("delete", line_id);
 				deleteLine(0, line_id);
 			}
 		}
@@ -798,16 +788,18 @@ function getLine (event) {
 }
 
 
-function stopLine(type, event, ui) {
-    Template.line.__helpers.get('stop')(type, event, ui);
+/*
+function stopLine(obj) {
+    Template.line.__helpers.get('stop')(obj);
 }
+*/
 
 function renderLine(index, line) {
     Template.line.__helpers.get('render')(index, line);
 }
 
-function updateLine(index, line_id, dx, dy, updatePorts) {
-    Template.line.__helpers.get('update')(index, line_id, dx, dy, updatePorts);
+function updateLine(index, line_id, dx, dy, dz, updatePorts) {
+    Template.line.__helpers.get('update')(index, line_id, dx, dy, dz, updatePorts);
 }
 
 function makeLine(port0, port1) {
@@ -824,17 +816,73 @@ function deleteLine(index, line_id) {
 
 function printLine(line_id) {
 	var line = Lines.findOne(line_id);
-	console.log("line", line);
+	//console.log("line", line);
 }
 
 function printJson(json_id) {
 	var json = Jsons.findOne(json_id);
-	console.log("json", json);
+	//console.log("json", json);
 }
 
 function printPort(port_id) {
 	var port = Ports.findOne(port_id);
-	console.log("port", port);
+	//console.log("port", port);
+}
+
+/*
+Template.stop = function(obj) {
+	if (obj.type === '.json') {
+	    stopJson(obj);
+	} else if (obj.type === '.port') {
+	    stopPort(obj);
+	} else if (obj.type === '.line') {
+	    stopLine(obj);
+	}
+}
+*/
+
+Template.set = function(event, obj) {
+        event.target.id = obj.id;
+	// do offset before changing the position
+	ui.position.x = obj.x;
+	ui.position.y = obj.y;
+	ui.position.z = obj.z;
+	ui.offset.x = ui.position.x - ui.originalPosition.x;
+	ui.offset.y = ui.position.y - ui.originalPosition.y;
+	ui.offset.z = ui.position.z - ui.originalPosition.z;
+	if (obj.type === '.json') {
+	    moveJson(obj.type, event, ui);
+	} else if (obj.type === '.port') {
+	    movePort(obj.type, event, ui);
+	} else if (obj.type === '.line') {
+	    moveLine(obj.type, event, ui);
+	}
+}
+
+Template.get = function(event) {
+	var ti = computeInfo(event);
+	var obj = null;
+	if (ti.type === 'json') {
+		obj = getJson(event);
+		obj.type = ".json";
+	} else if (ti.type === 'port') {
+		obj = getPort(event);
+		obj.type = ".port";
+	} else if (ti.type === 'line') {
+		obj = getLine(event);
+		obj.type = ".line";
+	}
+	ui.offset.x = 0;
+	ui.offset.y = 0;
+	ui.offset.z = 0;
+	ui.position.x = obj.x;
+	ui.position.y = obj.y;
+	ui.position.z = obj.z;
+	ui.originalPosition.x = obj.x;
+	ui.originalPosition.y = obj.y;
+	ui.originalPosition.z = obj.z;
+	obj.id = ti.id;
+	return obj;
 }
 
 ////////////////////////

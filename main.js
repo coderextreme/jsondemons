@@ -21,7 +21,9 @@ if (Meteor.isClient) {
 }
 
 if (Meteor.isServer) {
-	Lines.remove({});
+	// Lines.remove({});
+	// Ports.remove({});
+	// Jsons.remove({});
 	// Jsons.insert({left:0, top:30, title:"JSON Object 0", data: JSON.stringify([])});
 	// Jsons.insert({left:300, top:30, title:"JSON Object 1", data: JSON.stringify([0,1,2,3,4])});
 	// Jsons.insert({left:600, top:30, title:"JSON Object 2", data: JSON.stringify({"x":10, "y":10})});
