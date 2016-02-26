@@ -343,7 +343,12 @@ Template.json.helpers({
 	    var fr = new FileReader();
 	    fr.onload = function(e) {
 		var lines = e.target.result;
-		Jsons.update({"_id": json_id}, {$set: { data: lines }});
+		var js = JSON.parse(lines);
+		var data = '"'+JSON.stringify(js, null, 2).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '" "')+'"';
+		Jsons.update({"_id": json_id}, {$set: { data: data }});
+		// read back out to fix \ in initial display
+        	var json = Jsons.findOne(json_id);
+        	renderJson(Jsons.find().count() - 1, json);
 	    };
 	    fr.readAsText(file);
 	}, false);

@@ -8,7 +8,6 @@ function objectClick(event, id) {
 	if (previousId != id) {
 		previousId = id;
 		event.target.id = id; // override the canvas event target id
-		//console.log('object', event.target.id);
 		Template.currentFunction.callFunction(event);
 	} else {
 		previousId = '';
@@ -123,7 +122,7 @@ function onDragStart(event) {
 
         var dragObject = function(event, dx, dy)
         {
-	    if (isNaN(dx) || isNaN(dy)) {
+	    if (isNaN(dx) || isNaN(dy) || draggingUpVec == null) {
 		return;
 	    }
 	    //console.log('dx dy', dx, dy);
@@ -205,9 +204,9 @@ function onDragStart(event) {
 		<Transform translation="0 0 1">
 			 <shape>
 				<appearance>
-				  <material diffuseColor='1 1 0'></material>
+				  <material diffuseColor='1 0 1'></material>
 				</appearance>
-				<text string='"{{data}}"' solid='false'>
+				<text string='{{data}}' solid='false'>
 				    <fontstyle family="'Orbitron'" style="bold" size="4" justify='"MIDDLE" "MIDDLE"' quality='3'></fontstyle>
 				</text>
 			</shape>
