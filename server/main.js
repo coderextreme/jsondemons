@@ -1,6 +1,14 @@
-Jsons = new Meteor.Collection("jsons");
-Ports = new Meteor.Collection("ports");
-Lines = new Meteor.Collection("lines");
+import { Meteor } from 'meteor/meteor';
+import { Jsons, Ports, Lines } from '../imports/api/collections';
+
+Meteor.startup(() => {
+    // Server-side startup code
+    // Uncomment these if you want to reset/initialize collections
+    // Lines.remove({});
+    // Ports.remove({});
+    // Jsons.remove({});
+    // Jsons.insert({...});
+});
 
 if (Meteor.isServer) {
 	Meteor.publish("jsons", function() {
@@ -12,12 +20,6 @@ if (Meteor.isServer) {
 	Meteor.publish("lines", function() {
 		return Lines.find();
 	});
-}
-
-if (Meteor.isClient) {
-	Meteor.subscribe("jsons");
-	Meteor.subscribe("ports");
-	Meteor.subscribe("lines");
 }
 
 if (Meteor.isServer) {

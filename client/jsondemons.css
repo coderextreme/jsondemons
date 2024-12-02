@@ -2,7 +2,7 @@ body {
 	margin: 0px;
 	padding: 0px;
 }
-.canvas {
+.myCanvas {
     width: 900px;
     height: 900px;
 }
