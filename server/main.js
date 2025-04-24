@@ -7,7 +7,7 @@ Meteor.startup(() => {
     // Lines.remove({});
     // Ports.remove({});
     // Jsons.remove({});
-    // Jsons.insert({...});
+    // Jsons.insertAsync({...});
 });
 
 if (Meteor.isServer) {
@@ -26,9 +26,9 @@ if (Meteor.isServer) {
 	// Lines.remove({});
 	// Ports.remove({});
 	// Jsons.remove({});
-	// Jsons.insert({left:0, top:30, title:"JSON Object 0", data: JSON.stringify([])});
-	// Jsons.insert({left:300, top:30, title:"JSON Object 1", data: JSON.stringify([0,1,2,3,4])});
-	// Jsons.insert({left:600, top:30, title:"JSON Object 2", data: JSON.stringify({"x":10, "y":10})});
-	// Jsons.insert({left:0, top:130, title:"JSON Object 3", data: JSON.stringify({"name":"John"})});
-	// Jsons.insert({left:300, top:130, title:"JSON Object 4", data: JSON.stringify({})});
+	Jsons.insertAsync({x:0, y:30, z:0, title:"JSON Object 0", data: []});
+	Jsons.insertAsync({x:300, y:30, z:0, title:"JSON Object 1", data: [0,1,2,3,4]});
+	Jsons.insertAsync({x:600, y:30, z:0, title:"JSON Object 2", data: {"x":10, "y":10}});
+	Jsons.insertAsync({x:0, y:130, z:0, title:"JSON Object 3", data: {"name":"John"}});
+	Jsons.insertAsync({x:300, y:130, z:0, title:"JSON Object 4", data: {}});
 }

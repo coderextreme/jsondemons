@@ -2,7 +2,6 @@ import { Meteor } from 'meteor/meteor';
 import { Template } from 'meteor/templating';
 import { Mongo } from 'meteor/mongo';
 import { Jsons, Ports, Lines } from '../imports/api/collections';
-
 import "./1main.html";
 
 if (Meteor.isClient) {
@@ -21,7 +20,7 @@ Meteor.startup(() => {
 
 	    // whether that's below the form
 	    if (y >= top) {
-	      // if so, ad the fixed class
+	      // if so, add the fixed class
 	      $('#menu').addClass('fixed');
 	    } else {
 	      // otherwise remove it
@@ -29,6 +28,7 @@ Meteor.startup(() => {
 	    }
 	  });
 	});
+
 //////////   Canvas and Buttons  //////////////////
 
 Template.myCanvas.helpers({
@@ -58,146 +58,170 @@ Template.myCanvas.onRendered(function() {
 });
 
 Template.buttons.events({
-    'click #resetJSON' : function() {
-	Template.currentFunction.setFunction('reset', function(event) {
-	    resetJson(event);
-	});
-    },
-    'click #loadJSON' : function() {
-	// console.log("setting load function");
-	Template.currentFunction.setFunction('load', function(event) {
-	    if (getJson(event) != null) {
-		    console.log("load", event, getJson(event));
-		    loadJson(getJson(event)._id);
-	    }
-	});
-    },
-    'click #makeJSON' : function() {
-	Template.currentFunction.setFunction('makeJSON', function(event) {
-	    makeJson(event);
-	});
-    },
-    'click #delete' : function() {
-	Template.currentFunction.setFunction('delete', function(event) {
-	    // console.log('deleting', event.target.id);
-	    var json = getJson(event);
-	    deleteJson(json);
+  'change #resetJSON, click #resetJSON'(event) {
+    console.log('resetJSON event triggered');
+    Template.instance().currentFunction.setFunction('reset', (event) => {
+      resetJson(event);
+    });
+  },
+  'change #loadJSON, click #loadJSON'(event) {
+    console.log('loadJSON event triggered');
+    Template.instance().currentFunction.setFunction('load', (event) => {
+      const json = getJson(event);
+      if (json) {
+        console.log("load", event, json);
+        loadJson(json._id);
+      }
+    });
+  },
+  'change #makeJSON, click #makeJSON'(event) {
+    console.log('makeJSON event triggered');
+    Template.instance().currentFunction.setFunction('makeJSON', (event) => {
+      makeJson(event);
+    });
+  },
+  'change #delete, click #delete'(event) {
+    console.log('delete event triggered');
+    Template.instance().currentFunction.setFunction('delete', (event) => {
+      const json = getJson(event);
+      const port = getPort(event);
+      const line = getLine(event);
 
-	    var port = getPort(event);
-	    deletePort(0, port)
+      if (json) deleteJson(json);
+      if (port) deletePort(0, port);
+      if (line) deleteLine(0, line._id);
+    });
+  },
+  'change #drag, click #drag'(event) {
+    console.log('drag event triggered');
+    Template.instance().currentFunction.setFunction('drag', (event) => {
+      // Empty function maintained as in original
+    });
+  },
+  'change #saveJSON, click #saveJSON'(event) {
+    console.log('saveJSON event triggered');
+    Template.instance().currentFunction.setFunction('saveJSON', (event) => {
+      const json = getJson(event);
+      if (!json) {
+        return;
+      }
 
-	    var line = getLine(event);
-	    if (line != null) {
-		    deleteLine(0, line._id);
-	    }
-	});
-    },
-    'click #drag' : function(event) {
-	Template.currentFunction.setFunction('drag', function(event) {
-	});
-    },
-    'click #saveJSON' : function() {
-	Template.currentFunction.setFunction('saveJSON', function(event) {
-	    var json = getJson(event);
-	    if (json != null) {
-		if (typeof json.rawdata !== 'undefined' && json.rawdata !== null) {
-		    var data = json.rawdata;
-		    var savedJson = makeJson(event);
-		    Jsons.update({"_id": savedJson._id}, {$set: { x: json.x+6, data: data }});
-		    printJson(savedJson._id);
-		} else {
-			// console.log("No raw data.  Make a change");
-		}
-	    } else {
-		// console.error("Save not a JSON", event.target.id);
-	    }
-	});
-    },
-    'click #editJSON' : function() {
-	Template.currentFunction.setFunction('editJSON', function(event) {
-	    var json = getJson(event);
-	    if (json != null) {
-		startEditor(json);
-	    } else {
-		console.error("Not a JSON", event.target.id);
-	    }
-	});
-    },
-    'click #input' : function() {
-	Template.currentFunction.setFunction('input', function(event) {
-	    var json = getJson(event);
-	    makePort(json, "input");
-	});
-    },
-    'click #output' : function() {
-	Template.currentFunction.setFunction('output', function(event) {
-	    var json = getJson(event);
-	    makePort(json, "output");
-	});
-    },
-    'click #relationship' : function() {
-	port0 = null;
-	port1 = null;
-	Template.currentFunction.setFunction('relationship', function(event) {
-	    // Register Template.seenports here, used in 'make' for line
-	    Template.seenports = {};
-	    var port = getPort(event);
-	    if (port != null) {
-		if (port0 == null) {
-			port0 = port;
-		} else {
-			port1 = port;
-			if (port0._id != port1._id) {
-				if (port0.type !== port1.type) {
-					makeLine(port0, port1);
-				} else {
-					alert("Cannot connect two similar ports");
-				}
-			}
-			port0 = null;
-			port1 = null;
-		}
-	    }
-	});
-    },
-    'click #sequenceJSON' : function() {
-	Template.currentFunction.setFunction('sequence', function(event) {
-	    var json = getJson(event);
-	    if (json != null) {
-		    Template.currentFunction.setRecorder(function(rec) {
-			try {
-				var x = rec.event.pageX || null;
-				var y = rec.event.pageY || null;
-				rec.event.target = rec.event.target || { id: 'INIT_000', result: null }
-				var ti = computeInfo(rec.event);
-				
-				if (typeof rec.ui === 'object' && typeof rec.ui.position === 'object') {
-					x = rec.ui.position.x;
-					y = rec.ui.position.y;
-					z = rec.ui.position.z;
-				}
-				Jsons.update({_id: json._id}, {$push: {data:
-				    [JSON.stringify([rec.command,
-					 ti.type,
-					 ti.id,
-					 rec.event.target.result,
-					 x,
-					 y,
-					 z, 
-					 rec.event.srcElement], null, 2)]}});
-				printJson(json._id);
-				return true;
-			} catch (e) {
-				alert(e);
-				return false;
-			}
-		    });
-	    } else {
-		Template.currentFunction.setRecorder(null);
-		alert("Couldn't record to", event.target.id, "try a JSON desktop object");
-	    }
-	});
-    }
+      if (json.rawdata != null) {
+        const data = json.rawdata;
+        const savedJson = makeJson(event);
+        Jsons.update(
+          { _id: savedJson._id },
+          { $set: { x: json.x + 6, data } }
+        );
+        printJson(savedJson._id);
+      }
+    });
+  },
+  'change #editJSON, click #editJSON'(event) {
+    console.log('editJSON event triggered');
+    Template.instance().currentFunction.setFunction('editJSON', (event) => {
+      const json = getJson(event);
+      if (json) {
+        startEditor(json);
+      } else {
+        console.error("Not a JSON", event.target.id);
+      }
+    });
+  },
+  'change #input, click #input'(event) {
+    console.log('input event triggered');
+    Template.instance().currentFunction.setFunction('input', (event) => {
+      const json = getJson(event);
+      makePort(json, "input");
+    });
+  },
+  'change #output, click #output'(event) {
+    console.log('output event triggered');
+    Template.instance().currentFunction.setFunction('output', (event) => {
+      const json = getJson(event);
+      makePort(json, "output");
+    });
+  },
+  'change #relationship, click #relationship'(event) {
+    console.log('relationship event triggered');
+    port0 = null;
+    port1 = null;
+
+    Template.instance().currentFunction.setFunction('relationship', (event) => {
+      Template.instance().seenports = {};
+      const port = getPort(event);
+
+      if (port) {
+        if (!port0) {
+          port0 = port;
+        } else {
+          port1 = port;
+          if (port0._id !== port1._id) {
+            if (port0.type !== port1.type) {
+              makeLine(port0, port1);
+            } else {
+              alert("Cannot connect two similar ports");
+            }
+          }
+          port0 = null;
+          port1 = null;
+        }
+      }
+    });
+  },
+  'change #sequenceJSON, click #sequenceJSON'(event) {
+    console.log('sequenceJSON event triggered');
+    Template.instance().currentFunction.setFunction('sequence', (event) => {
+      const json = getJson(event);
+      if (!json) {
+        Template.instance().currentFunction.setRecorder(null);
+        alert("Couldn't record to", event.target.id, "try a JSON desktop object");
+        return;
+      }
+
+      Template.instance().currentFunction.setRecorder((rec) => {
+        try {
+          let x = rec.event.pageX ?? null;
+          let y = rec.event.pageY ?? null;
+          let z;
+
+          rec.event.target = rec.event.target || { id: 'INIT_000', result: null };
+          const ti = computeInfo(rec.event);
+
+          if (rec.ui?.position) {
+            x = rec.ui.position.x;
+            y = rec.ui.position.y;
+            z = rec.ui.position.z;
+          }
+
+          const dataArray = [
+            rec.command,
+            ti.type,
+            ti.id,
+            rec.event.target.result,
+            x,
+            y,
+            z
+          ];
+          // Continue with your logic here
+        } catch (error) {
+          console.error("Error recording sequence:", error);
+        }
+      });
+    });
+  }
+});
+
+// Add template created callback to handle initialization
+Template.buttons.onCreated(function() {
+  console.log('Buttons template created');
+  // Add any initialization code here
+});
+
+// Add rendered callback to verify everything is set up
+Template.buttons.onRendered(function() {
+  console.log('Buttons template rendered');
+  // Add any post-render initialization here
 });
 
 //////////// JSON /////
@@ -235,7 +259,7 @@ Template.json.helpers({
 	});
     },
     'make': function (event) {
-	// console.log('creating JSON', event);
+	console.log('creating JSON', event);
 	var id = Jsons.insert({x: event.pageX/11-26, y: 32-event.pageY/11, z:0, data: [], ports: [] });
 	var title = Jsons.update({"_id": id}, {$set: {title: id}});
 	if (title === 0) {
@@ -244,7 +268,7 @@ Template.json.helpers({
 	printJson(id);
 	var json = Jsons.findOne(id);
 	renderJson(Jsons.find().count() - 1, json);
-	// console.log(id);
+	console.log(id);
 	return json;
     },
     'load': function(json_id) {

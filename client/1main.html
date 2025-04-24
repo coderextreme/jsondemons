@@ -2,7 +2,7 @@
 	<title>JSON Demons-tration</title>
         <!--script src="http://d1n0x3qji82z53.cloudfront.net/src-min-noconflict/ace.js" type="text/javascript" charset="utf-8"></script-->
 	<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-	<script src="https://www.x3dom.org/download/dev/x3dom-full.js"></script>
+	<script src="https://www.x3dom.org/download/1.8.3/x3dom-full.js"></script>
 	  <script type="text/javascript">
 var previousId = ''
 function objectClick(event, id) {
@@ -165,7 +165,7 @@ function onDragStart(event) {
 	{{> myCanvas }}
   </body>
 
-  <Template name="buttons">
+  <template name="buttons">
     <div id="menu">
     <span>
     <input name="tools" type="radio" id="delete"><span class="webfont">Subtract-</span>
@@ -182,9 +182,9 @@ function onDragStart(event) {
     <input type="file" id="file" accept="text/json">
     </span>
     </div>
-  </Template>
+  </template>
 
-  <Template name="json">
+  <template name="json">
 	<Transform  onmousedown="startDragging(event, this);" onclick='objectClick(event, "json_{{_id}}")' draggable="true" class="json draggable" translation="{{x}} {{y}} 0" id="json_{{_id}}">
 		<Shape>
 			<Box size="20 30 0.5"></Box>
@@ -213,9 +213,9 @@ function onDragStart(event) {
 			</shape>
 		</Transform>
 	</Transform>
-  </Template>
+  </template>
 
-  <Template name="port">
+  <template name="port">
 	<Transform onmousedown="startDragging(event, this);" onclick='objectClick(event, "port_{{_id}}")' draggable="true" class="port {{type}} draggable" translation="{{x}} {{y}} 0" id="port_{{_id}}">
 		<Shape>
 			<Box size="2 2 2"></Box>
@@ -224,8 +224,8 @@ function onDragStart(event) {
 			</Appearance>
 		</Shape>
 	</Transform>
-  </Template>
-  <Template name="line">
+  </template>
+  <template name="line">
 	<Transform onmousedown="startDragging(event, this);" onclick='objectClick(event, "line_{{_id}}")' draggable="true" class="line draggable" id="line_{{_id}}" translation="{{x}} {{y}} 0">
                 <Shape>
                     <Extrusion DEF='extrusion' creaseAngle='0.785' crossSection=' 1.00 0.00, 0.92 -0.38, 0.71 -0.71, 0.38 -0.92, 0.00 -1.00, -0.38 -0.92, -0.71 -0.71, -0.92 -0.38, -1.00 -0.00, -0.92 0.38, -0.71 0.71, -0.38 0.92, 0.00 1.00, 0.38 0.92, 0.71 0.71, 0.92 0.38, 1.00 0.00' spine='{{x1}} {{y1}} 0, {{x2}} {{y2}} 0, {{x3}} {{y3}} 0'></Extrusion>
@@ -234,9 +234,9 @@ function onDragStart(event) {
                     </Appearance>
                 </Shape>
 	</Transform>
-  </Template>
+  </template>
 
-  <Template name="myCanvas">
+  <template name="myCanvas">
   <div class="myCanvas draggableContainer" id="container">
   <x3d class="myCanvas" id="x3dElement" onmouseup="stopDragging();" onmousemove="mouseMoved(event);">
 	<scene>
@@ -254,4 +254,4 @@ function onDragStart(event) {
 	</scene>
   </x3d>
   </div>
-  </Template>
+  </template>
