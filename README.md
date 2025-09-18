@@ -12,18 +12,16 @@ Install mongosh (run meteor mongo for instructions on where to download)
 Push meteor.bat and mongosh in your PATH environmental variable.
 
 
-run:
+install meteor (May have to be administrator):
 
 ```
-meteor run
+npx meteor
 ```
 
-In one terminal
-
-run:
+Then to start development:
 
 ```
-meteor mongo
+meteor npm start
 ```
 
-in another terminal.
+Click on localhost link that shows up.
