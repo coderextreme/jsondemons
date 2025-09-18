@@ -39,9 +39,11 @@ if (Meteor.isServer) {
   // --- DATABASE SEEDING ---
   Meteor.startup(async () => {
     // Only seed the database if it's completely empty
+	  /*
 	Lines.removeAsync({});
 	Ports.removeAsync({});
 	Jsons.removeAsync({});
+	*/
 
     if (await Jsons.find().countAsync() === 0) {
       console.log("Database is empty. Seeding with initial data...");

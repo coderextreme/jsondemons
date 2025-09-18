@@ -10,8 +10,6 @@ import './jsondemons.css';
 const activeTool = new ReactiveVar('drag');
 let portConnectionState = { port0: null };
 
-// REMOVED: The x3dRuntime variable and all initialization hooks are no longer needed.
-
 // --- Global Bridge for Clicks ---
 window.X3DOM_Events = {
   handleClick(type, id) {
@@ -21,12 +19,9 @@ window.X3DOM_Events = {
       case 'drag': {
         console.log(`[CLIENT] Drag ended (via onclick) for ${type} ${id}. Saving position...`);
         
-        // FIX: Use the standard document.getElementById() to get the node.
         const transformNode = document.getElementById(`T_${id}`);
         
         if (transformNode) {
-          // X3DOM attaches its internal data to the DOM element.
-          // The path to the translation vector is correct.
           const finalTranslation = transformNode._x3domNode._vf.translation;
           const newPosition = {
             x: finalTranslation.x,
@@ -107,13 +102,50 @@ Template.myCanvas.helpers({
   }),
 });
 
+// --- MODIFIED SECTION ---
 Template.myCanvas.events({
-  'click #container'(event) {
-    if (event.target === event.currentTarget && activeTool.get() === 'makeJSON') {
-      makeJson({ x: 0, y: 0, z: 0 });
+  'click #x3dElement'(event) { // Listen for clicks directly on the x3d element
+    if (activeTool.get() !== 'makeJSON') {
+        return; // Do nothing if not in the correct mode
     }
+
+    const x3dElem = event.currentTarget;
+    if (!x3dElem.runtime) {
+        console.error("X3DOM runtime not available.");
+        return;
+    }
+
+    // 1. Get click coordinates relative to the <x3d> canvas
+    const rect = x3dElem.getBoundingClientRect();
+    const clickX = event.clientX - rect.left;
+    const clickY = event.clientY - rect.top;
+
+    // 2. Get the viewing ray from the camera through the click point
+    const ray = x3dElem.runtime.getViewingRay(clickX, clickY);
+
+    // 3. Calculate the intersection of the ray with the Z=0 plane
+    // The ray equation is P(t) = ray.pos + t * ray.dir
+    // We want the point where P(t).z = 0.
+    // So, ray.pos.z + t * ray.dir.z = 0
+    // Solving for t: t = -ray.pos.z / ray.dir.z
+    if (ray.dir.z === 0) {
+        // Ray is parallel to the plane, cannot create an object here.
+        return;
+    }
+    const t = -ray.pos.z / ray.dir.z;
+
+    // 4. Find the intersection point using the calculated 't'
+    const newPosition = {
+        x: ray.pos.x + t * ray.dir.x,
+        y: ray.pos.y + t * ray.dir.y,
+        z: 0 // We are creating it on the z=0 plane
+    };
+    
+    // 5. Call the function to create the new JSON object at this position
+    makeJson(newPosition);
   },
 });
+// --- END OF MODIFIED SECTION ---
 
 // --- Template helpers ---
 Template.json.helpers({ isDraggable() { return activeTool.get() === 'drag'; } });
