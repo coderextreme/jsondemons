@@ -2,12 +2,11 @@
   "name": "jsondemons",
   "private": true,
   "scripts": {
-    "pretest": "npm run lint --silent",
     "env": "TEST_BROWSER_DRIVER=chrome",
     "test-once":            "meteor test --once --driver-package meteortesting:mocha",
-    "test-watch":             "meteor test --driver-package meteortesting:mocha",
+    "test-watch":           "meteor test --driver-package meteortesting:mocha",
     "test-app-once":        "meteor test --full-app --once --driver-package meteortesting:mocha",
-    "test-app-watch":         "meteor test --full-app --driver-package meteortesting:mocha",
+    "test-app-watch":       "meteor test --full-app --driver-package meteortesting:mocha",
     "start": "meteor run"
   },
   "dependencies": {
