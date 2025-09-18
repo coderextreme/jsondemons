@@ -1,8 +1,8 @@
   <head>
 	<title>JSON Demons-tration</title>
         <!--script src="http://d1n0x3qji82z53.cloudfront.net/src-min-noconflict/ace.js" type="text/javascript" charset="utf-8"></script-->
-	<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-	<script src="https://www.x3dom.org/download/1.8.3/x3dom-full.js"></script>
+	<script src="https://andreasplesch.github.io/x3dom/dist/x3dom-full.js"></script>
+	<script src="https://code.jquery.com/jquery-3.7.1.js" integrity="sha256-eKhayi8LEQwp4NKxN+CfCh+3qOVUtJn3QNZ0TciWLP4=" crossorigin="anonymous"></script>
 	  <script type="text/javascript">
 var previousId = ''
 function objectClick(event, id) {
@@ -238,10 +238,16 @@ function onDragStart(event) {
 
   <template name="myCanvas">
   <div class="myCanvas draggableContainer" id="container">
-  <x3d class="myCanvas" id="x3dElement" onmouseup="stopDragging();" onmousemove="mouseMoved(event);">
+  <x3d class="myCanvas" id="x3dElement" height="900px" width="100%" onmouseup="stopDragging();" onmousemove="mouseMoved(event);">
 	<scene>
 	<viewpoint  position='4.5 4.5 100' orientation='0 0 1 0' ></viewpoint>
 	<navigationInfo id="navInfo" type='"EXAMINE" "ANY"' typeParams="-0.4, 60, 0.5, 1.55"></navigationInfo>
+	<shape>
+		<sphere radius='18' ></sphere>
+		<appearance>
+		<material diffuseColor="1 0 0"></material>
+		</appearance>
+	</shape>
   	{{#each jsons}}
 		{{> json }}
  	 {{/each}}
