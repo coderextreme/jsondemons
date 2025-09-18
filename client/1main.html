@@ -1,263 +1,88 @@
-  <head>
-	<title>JSON Demons-tration</title>
-        <!--script src="http://d1n0x3qji82z53.cloudfront.net/src-min-noconflict/ace.js" type="text/javascript" charset="utf-8"></script-->
-	<script src="https://andreasplesch.github.io/x3dom/dist/x3dom-full.js"></script>
-	<script src="https://code.jquery.com/jquery-3.7.1.js" integrity="sha256-eKhayi8LEQwp4NKxN+CfCh+3qOVUtJn3QNZ0TciWLP4=" crossorigin="anonymous"></script>
-	  <script type="text/javascript">
-var previousId = ''
-function objectClick(event, id) {
-	if (previousId != id) {
-		previousId = id;
-		event.target.id = id; // override the myCanvas event target id
-		Template.currentFunction.callFunction(event);
-	} else {
-		previousId = '';
-	}
-}
+<!-- client/1main.html -->
+<head>
+  <title>JSON Demons-tration (High-Performance)</title>
+  <link rel='stylesheet' type='text/css' href='https://www.x3dom.org/download/x3dom.css'>
+  <script src="https://andreasplesch.github.io/x3dom/dist/x3dom-full.js"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.js"></script>
+</head>
 
-function setNoNavigation(value) {
-        document.getElementById("navInfo").setAttribute("type", '"NONE"');
-}
+<body>
+  {{> buttons }}
+  {{> myCanvas }}
+</body>
 
-function setNavigation(value) {
-        document.getElementById("navInfo").setAttribute("type", '"EXAMINE" "ANY"');
-}
-
-function onDragStart(event) {
-        if (document.getElementById("navInfo").getAttribute("type") === '"NONE"') {
-		//console.log('drag transform', event.target.id);
-		event.dataTransfer.setData("text", event.target.id);
-	}
-}
-
-///////////////////// dragging 
-        var cellSize = 1.0;
-        
-        var lastMouseX = -1;
-        var lastMouseY = -1;
-        
-        var transformNode = null;
-        
-        //vectors in 3D world space, associated to mouse x/y movement on the screen
-        var draggingUpVec    = null;
-        var draggingRightVec = null;
-        
-        var unsnappedDragPos = null;
-
-        
-        //------------------------------------------------------------------------------------------------------------------
-        
-        var mouseMoved = function(event)
-        {
-            //offsetX / offsetY polyfill for FF
-            var target = event.target || event.srcElement;
-            var rect = target.getBoundingClientRect();
-            event.offsetX = event.clientX - rect.left;
-            event.offsetY = event.clientY - rect.top;
-        
-            if (lastMouseX === -1 && !isNaN(event.offsetX)) {
-                lastMouseX = event.offsetX;
-            }
-            if (lastMouseY === -1 && !isNaN(event.offsetY)) {
-                lastMouseY = event.offsetY;
-            }
-	    // console.log('mousex mousey', lastMouseX, lastMouseY);
-
-            if (transformNode && lastMouseX !== -1 && lastMouseY !== -1)
-            {
-               dragObject(event, event.offsetX - this.lastMouseX, event.offsetY - this.lastMouseY);
-            }
-
-            if (!isNaN(event.offsetX)) {
-		    lastMouseX = event.offsetX;
-	    }
-            if (!isNaN(event.offsetY)) {
-		    lastMouseY = event.offsetY;
-	    }
-        };
-        
-        //------------------------------------------------------------------------------------------------------------------
-        
-        var startDragging = function(event)
-        {        
-	    Template.seenports = {};
-            //disable navigation during dragging
-            document.getElementById("navInfo").setAttribute("type", '"NONE"');
-                       
-	    transformNode = Template.get(event);
-	    if (transformNode != null) {
-		//console.log('transform get', transformNode.x, transformNode.y, transformNode.z);
-	    }
-            unsnappedDragPos     = new x3dom.fields.SFVec3f(transformNode.x, transformNode.y, transformNode.z);
-	    //console.log('unsnapped set 1', unsnappedDragPos.x, unsnappedDragPos.y, unsnappedDragPos.z);
-            
-            
-            //compute the dragging vectors in world coordinates
-            //(since navigation is disabled, those will not change until dragging has been finished)
-
-            //get the viewer's 3D local frame
-            var x3dElem  = document.getElementById("x3dElement");
-            var vMatInv  = x3dElem.runtime.viewMatrix().inverse();            
-            var viewDir  = vMatInv.multMatrixVec(new x3dom.fields.SFVec3f(0.0, 0.0, -1.0));
-            
-            //use the viewer's up-vector and right-vector
-            draggingUpVec    = vMatInv.multMatrixVec(new x3dom.fields.SFVec3f(0.0, 1.0,  0.0));;
-            draggingRightVec = viewDir.cross(this.draggingUpVec);   
-
-            
-            //project a world unit to the screen to get its size in pixels            
-            var x3dElem  = document.getElementById("x3dElement");
-	    //console.log('unsnapped get 4', unsnappedDragPos.x, unsnappedDragPos.y, unsnappedDragPos.z);
-            var p1 = x3dElem.runtime.calcCanvasPos(unsnappedDragPos.x, unsnappedDragPos.y, unsnappedDragPos.z);
-            var p2 = x3dElem.runtime.calcCanvasPos(unsnappedDragPos.x + draggingRightVec.x,
-                                                   unsnappedDragPos.y + draggingRightVec.y,
-                                                   unsnappedDragPos.z + draggingRightVec.z)
-            var magnificationFactor = 1.0 / Math.abs(p1[0] - p2[0]);
-            
-            //scale up vector and right vector accordingly            
-            draggingUpVec    = draggingUpVec.multiply(magnificationFactor);
-            draggingRightVec = draggingRightVec.multiply(magnificationFactor);            
-        };
-
-        //------------------------------------------------------------------------------------------------------------------
-
-        var dragObject = function(event, dx, dy)
-        {
-	    if (isNaN(dx) || isNaN(dy) || draggingUpVec == null) {
-		return;
-	    }
-	    //console.log('dx dy', dx, dy);
-            //scale up vector and right vector accordingly            
-            var offsetUp    = draggingUpVec.multiply(-dy);
-            var offsetRight = draggingRightVec.multiply(dx);
-
-	    //console.log('unsnapped get 2', unsnappedDragPos.x, unsnappedDragPos.y, unsnappedDragPos.z);
-            unsnappedDragPos = unsnappedDragPos.add(offsetUp).add(offsetRight);
-	    //console.log('unsnapped set 3', unsnappedDragPos.x, unsnappedDragPos.y, unsnappedDragPos.z);
-
-            transformNode.x = unsnappedDragPos.x;
-            transformNode.y = unsnappedDragPos.y;
-            transformNode.z = unsnappedDragPos.z;
-	    if (transformNode != null) {
-		Template.set(event, transformNode);
-		//console.log('transform set', transformNode.x, transformNode.y, transformNode.z);
-	    }
-        }
-
-        //------------------------------------------------------------------------------------------------------------------
-
-        var stopDragging = function()
-        {
-            //Template.stop(transformNode);                
-            transformNode = null;                
-            draggingUpVec        = null;
-            draggingRightVec     = null;
-            unsnappedDragPos     = null;
-            
-            //re-enable navigation after dragging
-            document.getElementById("navInfo").setAttribute("type", '"EXAMINE" "ANY"');
-        };        
-    </script>
-  </head>
-
-  <body>
-	{{> buttons }}
-	{{> myCanvas }}
-  </body>
-
-  <template name="buttons">
-    <div id="menu">
+<template name="buttons">
+  <div id="menu">
     <span>
-    <input name="tools" type="radio" id="delete"><span class="webfont">Subtract-</span>
-    <input name="tools" type="radio" id="makeJSON"><span class="webfont">Add+</span>
-    <input name="tools" type="radio" id="sequenceJSON"><span class="webfont">Record o_o</span>
-    <input name="tools" type="radio" id="resetJSON"><span class="webfont">Reset</span>
-    <input name="tools" type="radio" id="loadJSON"><span class="webfont">Load[^]</span>
-    <input name="tools" type="radio" id="editJSON"><span class="webfont">Edit/</span>
-    <input name="tools" type="radio" id="saveJSON"><span class="webfont">Save[V]</span>
-    <input name="tools" type="radio" id="input"><span class="webfont">+Input</span>
-    <input name="tools" type="radio" id="output"><span class="webfont">Output+</span>
-    <input name="tools" type="radio" id="relationship"><span class="webfont">Connect&gt;&lt;</span>
-    <input name="tools" type="radio" id="drag"><span class="webfont">Move&lt;--</span>
-    <input type="file" id="file" accept="text/json">
+      <input name="tools" type="radio" id="drag" checked><span class="webfont">Move&lt;--</span>
+      <input name="tools" type="radio" id="makeJSON"><span class="webfont">Add+</span>
+      <input name="tools" type="radio" id="delete"><span class="webfont">Subtract-</span>
+      <input name="tools" type="radio" id="input"><span class="webfont">+Input</span>
+      <input name="tools" type="radio" id="output"><span class="webfont">Output+</span>
+      <input name="tools" type="radio" id="relationship"><span class="webfont">Connect&gt;&lt;</span>
+      <input name="tools" type="radio" id="editJSON"><span class="webfont">Edit/</span>
+      <input name="tools" type="radio" id="saveJSON"><span class="webfont">Save[V]</span>
+      <input name="tools" type="radio" id="loadJSON"><span class="webfont">Load[^]</span>
+      <input name="tools" type="radio" id="resetJSON"><span class="webfont">Reset</span>
+      <input name="tools" type="radio" id="sequenceJSON"><span class="webfont">Record o_o</span>
+      <input type="file" id="file-input" accept="text/json" style="display: none;">
     </span>
-    </div>
-  </template>
-
-  <template name="json">
-	<Transform  onmousedown="startDragging(event, this);" onclick='objectClick(event, "json_{{_id}}")' draggable="true" class="json draggable" translation="{{x}} {{y}} 0" id="json_{{_id}}">
-		<Shape>
-			<Box size="20 30 0.5"></Box>
-			<Appearance>
-				<Material diffuseColor="0.5 0.5 0.5"></Material>
-			</Appearance>
-		</Shape>
-		<Transform translation="0 14 1">
-			 <shape>
-				<appearance>
-				  <material diffuseColor='0 0 0' shininess='0.51'></material>
-				</appearance>
-				<text string='"{{title}}"' solid='false'>
-				    <fontstyle family="'Orbitron'" style="bold" size="1" justify='end' quality='3'></fontstyle>
-				</text>
-			</shape>
-		</Transform>
-		<Transform translation="0 0 1">
-			 <shape>
-				<appearance>
-				  <material diffuseColor='1 0 1'></material>
-				</appearance>
-				<text string='{{data}}' solid='false'>
-				    <fontstyle family="'Orbitron'" style="bold" size="4" justify='"MIDDLE" "MIDDLE"' quality='3'></fontstyle>
-				</text>
-			</shape>
-		</Transform>
-	</Transform>
-  </template>
-
-  <template name="port">
-	<Transform onmousedown="startDragging(event, this);" onclick='objectClick(event, "port_{{_id}}")' draggable="true" class="port {{type}} draggable" translation="{{x}} {{y}} 0" id="port_{{_id}}">
-		<Shape>
-			<Box size="2 2 2"></Box>
-			<Appearance>
-				<Material diffuseColor="{{color}}"></Material>
-			</Appearance>
-		</Shape>
-	</Transform>
-  </template>
-  <template name="line">
-	<Transform onmousedown="startDragging(event, this);" onclick='objectClick(event, "line_{{_id}}")' draggable="true" class="line draggable" id="line_{{_id}}" translation="{{x}} {{y}} 0">
-                <Shape>
-                    <Extrusion DEF='extrusion' creaseAngle='0.785' crossSection=' 1.00 0.00, 0.92 -0.38, 0.71 -0.71, 0.38 -0.92, 0.00 -1.00, -0.38 -0.92, -0.71 -0.71, -0.92 -0.38, -1.00 -0.00, -0.92 0.38, -0.71 0.71, -0.38 0.92, 0.00 1.00, 0.38 0.92, 0.71 0.71, 0.92 0.38, 1.00 0.00' spine='{{x1}} {{y1}} 0, {{x2}} {{y2}} 0, {{x3}} {{y3}} 0'></Extrusion>
-                    <Appearance>
-				<Material diffuseColor="red"></Material>
-                    </Appearance>
-                </Shape>
-	</Transform>
-  </template>
-
-  <template name="myCanvas">
-  <div class="myCanvas draggableContainer" id="container">
-  <x3d class="myCanvas" id="x3dElement" height="900px" width="100%" onmouseup="stopDragging();" onmousemove="mouseMoved(event);">
-	<scene>
-	<viewpoint  position='4.5 4.5 100' orientation='0 0 1 0' ></viewpoint>
-	<navigationInfo id="navInfo" type='"EXAMINE" "ANY"' typeParams="-0.4, 60, 0.5, 1.55"></navigationInfo>
-	<shape>
-		<sphere radius='18' ></sphere>
-		<appearance>
-		<material diffuseColor="1 0 0"></material>
-		</appearance>
-	</shape>
-  	{{#each jsons}}
-		{{> json }}
- 	 {{/each}}
- 	 {{#each ports}}
-		{{> port }}
- 	 {{/each}}
-	  {{#each lines}}
-		{{> line }}
-	  {{/each}}
-	</scene>
-  </x3d>
   </div>
-  </template>
+</template>
+
+<template name="json">
+  <Transform id="T_{{_id}}" DEF="T_{{_id}}" translation="{{x}} {{y}} {{z}}">
+    <PlaneSensor DEF="PS_{{_id}}" enabled="{{isDraggable}}" offset="{{x}} {{y}} {{z}}"></PlaneSensor>
+    <Shape onclick="X3DOM_Events.handleClick('json', '{{_id}}')">
+      <Box size="20 30 0.5"></Box>
+      <Appearance><Material diffuseColor="0.5 0.5 0.5"></Material></Appearance>
+    </Shape>
+    <Transform translation="0 14 1">
+      <Shape><Appearance><Material diffuseColor='0 0 0'></Material></Appearance><Text string='"{{title}}"'><FontStyle family="'Orbitron'" style="bold" size="1"></FontStyle></Text></Shape>
+    </Transform>
+    <Transform translation="0 0 1">
+      <Shape><Appearance><Material diffuseColor='1 0 1'></Material></Appearance><Text string='{{data}}'><FontStyle family="'Orbitron'" style="bold" size="4"></FontStyle></Text></Shape>
+    </Transform>
+  </Transform>
+  <!-- The ROUTE connects the sensor to the transform for smooth dragging -->
+  <ROUTE fromNode="PS_{{_id}}" fromField="translation_changed" toNode="T_{{_id}}" toField="set_translation"></ROUTE>
+</template>
+
+<template name="port">
+  <Transform id="T_{{_id}}" DEF="T_{{_id}}" translation="{{x}} {{y}} {{z}}">
+    <PlaneSensor DEF="PS_{{_id}}" enabled="{{isDraggable}}" offset="{{x}} {{y}} {{z}}"></PlaneSensor>
+    <Shape onclick="X3DOM_Events.handleClick('port', '{{_id}}')">
+      <Box size="2 2 2"></Box>
+      <Appearance><Material diffuseColor="{{color}}"></Material></Appearance>
+    </Shape>
+  </Transform>
+  <ROUTE fromNode="PS_{{_id}}" fromField="translation_changed" toNode="T_{{_id}}" toField="set_translation"></ROUTE>
+</template>
+
+<template name="line">
+    <Transform translation="0 0 0">
+            <Shape>
+          <Appearance>
+	    <LineProperties linewidthScaleFactor='20'></LineProperties>
+            <Material diffuseColor='1 0 0'></Material>
+          </Appearance>
+          <LineSet DEF='Geometry_1' vertexCount='3'>
+            <Coordinate point='{{x1}} {{y1}} {{z1}}, {{x2}} {{y2}} {{z2}}, {{x3}} {{y3}} {{z3}}'></Coordinate>
+          </LineSet>
+        </Shape>
+    </Transform>
+</template>
+
+<template name="myCanvas">
+  <div class="myCanvas draggableContainer" id="container">
+    <x3d id="x3dElement" height="900px" width="100%">
+      <scene>
+        <Viewpoint position='0 0 100'></Viewpoint>
+        <NavigationInfo id="navInfo" type='"EXAMINE" "ANY"'></NavigationInfo>
+        {{#each jsons}} {{> json }} {{/each}}
+        {{#each ports}} {{> port }} {{/each}}
+        {{#each lines}} {{> line }} {{/each}}
+      </scene>
+    </x3d>
+  </div>
+</template>

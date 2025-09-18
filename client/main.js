@@ -1,933 +1,188 @@
+// client/main.js
 import { Meteor } from 'meteor/meteor';
 import { Template } from 'meteor/templating';
-import { Mongo } from 'meteor/mongo';
+import { ReactiveVar } from 'meteor/reactive-var';
 import { Jsons, Ports, Lines } from '../imports/api/collections';
-import "./1main.html";
+import './1main.html';
+import './jsondemons.css';
 
-if (Meteor.isClient) {
-	Meteor.subscribe("jsons");
-	Meteor.subscribe("ports");
-	Meteor.subscribe("lines");
-}
+// --- Global State ---
+const activeTool = new ReactiveVar('drag');
+let portConnectionState = { port0: null };
 
-Meteor.startup(() => {
-    	console.log('Client startup');
-	$(document).ready(function () {  
-	  var top = $('#menu').offset().top - parseFloat($('#menu').css('marginTop').replace(/auto/, 100));
-	  $(window).scroll(function (event) {
-	    // what the y position of the scroll is
-	    var y = $(this).scrollTop();
+// REMOVED: The x3dRuntime variable and all initialization hooks are no longer needed.
 
-	    // whether that's below the form
-	    if (y >= top) {
-	      // if so, add the fixed class
-	      $('#menu').addClass('fixed');
-	    } else {
-	      // otherwise remove it
-	      $('#menu').removeClass('fixed');
-	    }
-	  });
-	});
+// --- Global Bridge for Clicks ---
+window.X3DOM_Events = {
+  handleClick(type, id) {
+    const tool = activeTool.get();
+    
+    switch (tool) {
+      case 'drag': {
+        console.log(`[CLIENT] Drag ended (via onclick) for ${type} ${id}. Saving position...`);
+        
+        // FIX: Use the standard document.getElementById() to get the node.
+        const transformNode = document.getElementById(`T_${id}`);
+        
+        if (transformNode) {
+          // X3DOM attaches its internal data to the DOM element.
+          // The path to the translation vector is correct.
+          const finalTranslation = transformNode._x3domNode._vf.translation;
+          const newPosition = {
+            x: finalTranslation.x,
+            y: finalTranslation.y,
+            z: finalTranslation.z
+          };
 
-//////////   Canvas and Buttons  //////////////////
-
-Template.myCanvas.helpers({
-    jsons:  function () {
-	return Jsons.find().fetch();
-    },
-    ports:  function () {
-	return Ports.find().fetch();
-    },
-    lines:  function () {
-	return Lines.find().fetch();
-    }
-});
-/////////  EVENTS /////////////
-
-Template.myCanvas.events({
-    'click #container' : function(event) {
-	// event.preventDefault();
-	Template.currentFunction.callFunction(event);
-    }
-});
-
-////////////////////////
-Template.myCanvas.onRendered(function() {
-    // $.each(Template.myCanvas.__helpers.get('jsons')(), renderJson);
-    $.each(this.data.jsons(), renderJson);
-});
-
-Template.buttons.events({
-  'change #resetJSON, click #resetJSON'(event) {
-    console.log('resetJSON event triggered');
-    Template.instance().currentFunction.setFunction('reset', (event) => {
-      resetJson(event);
-    });
-  },
-  'change #loadJSON, click #loadJSON'(event) {
-    console.log('loadJSON event triggered');
-    Template.instance().currentFunction.setFunction('load', (event) => {
-      const json = getJson(event);
-      if (json) {
-        console.log("load", event, json);
-        loadJson(json._id);
-      }
-    });
-  },
-  'change #makeJSON, click #makeJSON'(event) {
-    console.log('makeJSON event triggered');
-    Template.instance().currentFunction.setFunction('makeJSON', (event) => {
-      makeJson(event);
-    });
-  },
-  'change #delete, click #delete'(event) {
-    console.log('delete event triggered');
-    Template.instance().currentFunction.setFunction('delete', (event) => {
-      const json = getJson(event);
-      const port = getPort(event);
-      const line = getLine(event);
-
-      if (json) deleteJson(json);
-      if (port) deletePort(0, port);
-      if (line) deleteLine(0, line._id);
-    });
-  },
-  'change #drag, click #drag'(event) {
-    console.log('drag event triggered');
-    Template.instance().currentFunction.setFunction('drag', (event) => {
-      // Empty function maintained as in original
-    });
-  },
-  'change #saveJSON, click #saveJSON'(event) {
-    console.log('saveJSON event triggered');
-    Template.instance().currentFunction.setFunction('saveJSON', (event) => {
-      const json = getJson(event);
-      if (!json) {
-        return;
-      }
-
-      if (json.rawdata != null) {
-        const data = json.rawdata;
-        const savedJson = makeJson(event);
-        Jsons.update(
-          { _id: savedJson._id },
-          { $set: { x: json.x + 6, data } }
-        );
-        printJson(savedJson._id);
-      }
-    });
-  },
-  'change #editJSON, click #editJSON'(event) {
-    console.log('editJSON event triggered');
-    Template.instance().currentFunction.setFunction('editJSON', (event) => {
-      const json = getJson(event);
-      if (json) {
-        startEditor(json);
-      } else {
-        console.error("Not a JSON", event.target.id);
-      }
-    });
-  },
-  'change #input, click #input'(event) {
-    console.log('input event triggered');
-    Template.instance().currentFunction.setFunction('input', (event) => {
-      const json = getJson(event);
-      makePort(json, "input");
-    });
-  },
-  'change #output, click #output'(event) {
-    console.log('output event triggered');
-    Template.instance().currentFunction.setFunction('output', (event) => {
-      const json = getJson(event);
-      makePort(json, "output");
-    });
-  },
-  'change #relationship, click #relationship'(event) {
-    console.log('relationship event triggered');
-    port0 = null;
-    port1 = null;
-
-    Template.instance().currentFunction.setFunction('relationship', (event) => {
-      Template.instance().seenports = {};
-      const port = getPort(event);
-
-      if (port) {
-        if (!port0) {
-          port0 = port;
+          if (type === 'json') {
+            Meteor.call('jsons.updatePosition', id, newPosition);
+          } else if (type === 'port') {
+            Meteor.call('ports.updatePosition', id, newPosition);
+          }
         } else {
-          port1 = port;
-          if (port0._id !== port1._id) {
-            if (port0.type !== port1.type) {
-              makeLine(port0, port1);
-            } else {
-              alert("Cannot connect two similar ports");
-            }
-          }
-          port0 = null;
-          port1 = null;
+          console.error(`Could not find Transform node with ID 'T_${id}'`);
         }
+        break;
       }
-    });
-  },
-  'change #sequenceJSON, click #sequenceJSON'(event) {
-    console.log('sequenceJSON event triggered');
-    Template.instance().currentFunction.setFunction('sequence', (event) => {
-      const json = getJson(event);
-      if (!json) {
-        Template.instance().currentFunction.setRecorder(null);
-        alert("Couldn't record to", event.target.id, "try a JSON desktop object");
-        return;
-      }
+      
+      case 'delete': 
+        if (type === 'json') deleteJson(id); 
+        if (type === 'port') deletePort(id); 
+        break;
+      case 'input': 
+        if (type === 'json') makePort(id, 'input'); 
+        break;
+      case 'output': 
+        if (type === 'json') makePort(id, 'output'); 
+        break;
+      case 'relationship': 
+        if (type === 'port') handlePortConnection(id); 
+        break;
+    }
+  }
+};
 
-      Template.instance().currentFunction.setRecorder((rec) => {
-        try {
-          let x = rec.event.pageX ?? null;
-          let y = rec.event.pageY ?? null;
-          let z;
+// --- Subscriptions ---
+Meteor.subscribe("jsons");
+Meteor.subscribe("ports");
+Meteor.subscribe("lines");
 
-          rec.event.target = rec.event.target || { id: 'INIT_000', result: null };
-          const ti = computeInfo(rec.event);
+// --- Template: buttons ---
+Template.buttons.onCreated(function() { activeTool.set('drag'); });
+Template.buttons.events({
+  'change input[name="tools"]'(event) {
+    activeTool.set(event.target.id);
+    portConnectionState = { port0: null }; 
+    if (event.target.id === 'loadJSON') document.getElementById('file-input').click();
+  }
+});
 
-          if (rec.ui?.position) {
-            x = rec.ui.position.x;
-            y = rec.ui.position.y;
-            z = rec.ui.position.z;
-          }
-
-          const dataArray = [
-            rec.command,
-            ti.type,
-            ti.id,
-            rec.event.target.result,
-            x,
-            y,
-            z
-          ];
-          // Continue with your logic here
-        } catch (error) {
-          console.error("Error recording sequence:", error);
-        }
-      });
+// --- Template: myCanvas ---
+Template.myCanvas.onRendered(function() {
+  const menu = $('#menu');
+  if (menu.length) {
+    const top = menu.offset().top - parseFloat(menu.css('marginTop').replace(/auto/, 0));
+    $(window).scroll(function() {
+      const y = $(this).scrollTop();
+      if (y >= top) menu.addClass('fixed');
+      else menu.removeClass('fixed');
     });
   }
 });
 
-// Add template created callback to handle initialization
-Template.buttons.onCreated(function() {
-  console.log('Buttons template created');
-  // Add any initialization code here
-});
-
-// Add rendered callback to verify everything is set up
-Template.buttons.onRendered(function() {
-  console.log('Buttons template rendered');
-  // Add any post-render initialization here
-});
-
-//////////// JSON /////
-
-Template.json.helpers({
-    'get': function(event) {
-	// console.log('getJson event', event);
-	var ti = computeInfo(event);
-	// console.log('ti', ti);
-	var json =  Jsons.findOne(ti.id);
-	if (typeof json === 'undefined'
-	  && ti.type !== 'json'
-	  && ti.type !== 'text'
-	  && ti.type != 'file') {
-	    json =  null;
-	}
-	return json;
-    },
-    'ports':  function (json_id) {
-	return Ports.find({json_id: json_id}).fetch();
-    },
-    'reset': function(event) {
-	var json = getJson(event);
-	var iports = 0;
-	var oports = 0;
-	$.each(json.ports, function(index, port_id) {
-		var port = Ports.findOne(port_id);
-		if (port.type === "input") {
-			renderPort(iports++, port_id);
-		} else if (port.type === "output") {
-			renderPort(oports++, port_id);
-		} else {
-			console.log("Bad type ",port.type,"of port for"+ port);
-		}
-	});
-    },
-    'make': function (event) {
-	console.log('creating JSON', event);
-	var id = Jsons.insert({x: event.pageX/11-26, y: 32-event.pageY/11, z:0, data: [], ports: [] });
-	var title = Jsons.update({"_id": id}, {$set: {title: id}});
-	if (title === 0) {
-		("Couldn't find the JSON you just created");
-	}
-	printJson(id);
-	var json = Jsons.findOne(id);
-	renderJson(Jsons.find().count() - 1, json);
-	console.log(id);
-	return json;
-    },
-    'load': function(json_id) {
-      var fileElement = document.querySelector(getJsonInput(json_id));
-      // console.log("file id", getJsonInput(json_id));
-      if (typeof json_id !== 'undefined' && fileElement !== null) {
-	fileElement.addEventListener("change", function() {
-	    // console.log("change is", this);
-	    var file = this.files[0];
-	    var fr = new FileReader();
-	    fr.onload = function(e) {
-		var lines = e.target.result;
-		var js = JSON.parse(lines);
-		var data = '"'+JSON.stringify(js, null, 2).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '" "')+'"';
-		Jsons.update({"_id": json_id}, {$set: { data: data }});
-		// read back out to fix \ in initial display
-		var json = Jsons.findOne(json_id);
-		renderJson(Jsons.find().count() - 1, json);
-	    };
-	    fr.readAsText(file);
-	}, false);
-      } else {
-		alert("You need a JSON container to load into");
-      }
-    },
-    'render': function(index, json) {
-	if (typeof json.ports !== 'undefined') {
-		// something got lost...
-		Jsons.update({"_id": json._id}, {$set: {ports: [], title: json._id }});
-	
-		json = Jsons.findOne(json._id);
-	}
-	$.each(json.ports, renderPort);
-    },
-    'edit': function(json) {
-	var editor = ace.edit(getTextFromJson(json._id).substr(1));
-	editor.setTheme("ace/theme/monokai");
-	editor.getSession().setMode("ace/mode/javascript");
-	editor.on("change", function() {
-	    var text = editor.getValue();
-	    Jsons.update({"_id": json._id}, {$set: {rawdata: text }});
-	});
-	return editor;
-    },
-/*
-    'stop': function(json) {
-	// implement stop
-	Template.seenports = {};
-	$.each(json.ports, function(pindex, port_id) {
-		// only the JSON location should change the position of the port
-		var updated = Ports.update({"_id": port_id}, {$set: {
-			dx: 0,
-			dy: 0,
-			dz: 0
-		}});
-		port = Ports.findOne(port_id);
-		printPort(port_id);
-		updatePort(pindex, port, 0, 0, 0);
-	});
-	Template.currentFunction.record({command:'stop', object:json});
-    },
-*/
-    'move': function(type, event, ui) {
-	var json = getJson(event);
-	if (json !== null) {
-	    Jsons.update({"_id": json._id}, {$set: {x: ui.position.x, y: ui.position.y, z:ui.position.z}});
-	    printJson(json._id);
-	    Template.seenports = {};
-	    $.each(json.ports, function(pindex, port_id) {
-		// only the JSON location should change the position of the port
-		var updated = Ports.update({"_id": port_id}, {$set: {
-			dx: 0,
-			dy: 0,
-			dz: 0
-		}});
-		port = Ports.findOne(port_id);
-		printPort(port_id);
-		updatePort(pindex, port, 0, 0, 0);
-	    });
-	} else {
-		console.log("NO JSON", event);
-	}
-     },
-    'delete': function(json) {
-	if (json !== null && typeof json !== 'undefined') {
-	    if (typeof json.ports !== 'undefined') {
-		// remove all ports from json
-		$.each(json.ports, deletePort);
-		Jsons.update({"_id": json._id}, {$set: {ports: []}});
-		printJson(json._id);
-	    }
-	    Jsons.remove({_id: json._id});
-	} else {
-		console.log("Couldn't remove JSON");
-	}
+Template.myCanvas.helpers({
+  jsons: () => Jsons.find(),
+  ports: () => Ports.find(),
+  lines: () => Lines.find().map(line => {
+    const port0 = Ports.findOne(line.port0);
+    const port1 = Ports.findOne(line.port1);
+    if (port0 && port1) {
+        line.x1 = port0.x; line.y1 = port0.y; line.z1 = port0.z || 0;
+        line.x3 = port1.x; line.y3 = port1.y; line.z3 = port1.z || 0;
+        line.x2 = (port0.x + port1.x) / 2;
+        line.y2 = (port0.y + port1.y) / 2;
+        line.z2 = ((port0.z || 0) + (port1.z || 0)) / 2;
     }
+    return line;
+  }),
 });
 
-/////// PORT ///////////
-Template.port.helpers({
-    'make': function(json, type) {
-	if (json !== null) {
-	    // relative to the JSON object
-	    var offx = 10;
-	    var color = "blue";
-	    if (type === "input") {
-		offx = -10;
-		color = "green";
-	    }
-	    var offy = 0;
-	    var offz = 0;
-	    var id = Ports.insert({type: type, x:json.x+offx, z:json.z+offz, offx:offx, offy:offy, offz: offz, dx: 0, dy: 0, dz:0, json_id: json._id, color:color, lines: []});
-	    Jsons.update({"_id": json._id}, {$push: {ports: id }});
-	    printJson(json._id);
-	    var index = Ports.find({json_id: json._id, type: type, dx: 0, dy: 0 }).count()-1;
-	    renderPort(index, id);
-	}
-     },
-    'get': function(event) {
-	var ti =  computeInfo(event);
-	// console.log(ti.type, ti.id);
-	var port = Ports.findOne(ti.id);
-	if (typeof port === 'undefined' && ti.type != 'port') {
-	    port = null;
-	}
-	return port;
-    },
-    'render': function(index, port_id) {
-	port = Ports.findOne(port_id);
-	if (port === null) {
-	    console.error("Tried to render a null port");
-	    return;
-	}
-	var jsonDiv = getJsonFromPort(port);
-	var portDiv = getPortDiv(port);
-	var json = Jsons.findOne(port.json_id);
-	if (json != null) {
-		var portTop = json.y + 15 - 2.1 * index;
-		// console.log('port y', portTop);
-		Ports.update({"_id": port._id}, {$set: {y: portTop}});
-		printPort(port._id);
-	}
-
-	var divbottom = parseInt(portDiv.css("bottom"), 10);
-	var jsonheight = parseInt(jsonDiv.css("height"), 10);
-	if (divbottom < 0) {
-	    jsonDiv.css("height", (jsonheight - divbottom) + "px");
-	}
-    },
-/*
-    'stop': function(port) {
-	updatePort(0, port, 0, 0, 0);
-	Template.currentFunction.record({command:'stop', object:port});
-    },
-*/
-    'move': function(type, event, ui) {
-	var port = getPort(event);
-	if (port !== null) {
-	    var json = Jsons.findOne(port.json_id);
-	    var dx = ui.offset.x;
-	    var dy = ui.offset.y;
-	    var dz = ui.offset.z;
-	    Ports.update({"_id": port._id}, {$set: {
-		x: ui.position.x,
-		y: ui.position.y,
-		z: ui.position.z,
-		offx: ui.position.x - json.x,
-		offy: ui.position.y - json.y,
-		offz: ui.position.z - json.z
-	    }});
-	    port = Ports.findOne(port._id);
-	    printPort(port._id);
-	    updatePort(0, port, dx, dy, dz);
-	}
-    },
-    'delete': function(index, port_id) {
-	var port = Ports.findOne(port_id);
-	if (typeof port !== 'undefined' && port !== null) {
-	    // remove the port from the JSON
-	    var json = Jsons.findOne(port.json_id);
-	    if (typeof json !== 'undefined') {
-		var newports = [];
-		var newIndex = 0;
-		var changed = false;
-		$.each(json.ports, function(index, p) {
-		    if (port._id === p) {
-			changed = true;
-		    } else {
-			newports[newIndex++] = json.ports[index];
-		    }
-		});
-		if (changed) {
-		    Jsons.update({"_id": json._id}, {$set: {ports: newports}});
-		    printJson(json._id);
-		}
-	    }
-	    // remove the lines
-	    if (typeof port.lines !== 'undefined') {
-		    $.each(port.lines, deleteLine)
-	    }
-	    $.each(Lines.find().fetch(), function(index, line) {
-			if (line.port0 === port._id || line.port1 === port._id) {
-				deleteLine(index, line._id)
-			}
-	    });
-	    console.log("Removing port", port);
-	    Ports.remove({_id:port._id});
-	} else {
-		console.log("Couldn't remove Port", port_id);
-	}
+Template.myCanvas.events({
+  'click #container'(event) {
+    if (event.target === event.currentTarget && activeTool.get() === 'makeJSON') {
+      makeJson({ x: 0, y: 0, z: 0 });
     }
+  },
 });
 
-////////////// Line helpers
-Template.line.helpers({
-    'make': function(port0, port1) {
-	if (port0 != null && port1 != null) {
-		//console.log('Inserting ',port0._id, port1._id);
-		var id = Lines.insert({
-			port0:port0._id,
-			x1:port0.x+0,
-			y1:port0.y+0,
-			z1:port0.z+0,
-			port1:port1._id,
-			x2:(port1.x+port0.x)/2+0,
-			y2:(port1.y+port0.y)/2+0,
-			z2:(port1.z+port0.z)/2+0,
-			x3:port1.x+0,
-			y3:port1.y+0,
-			z3:port1.z+0,
-			dx:0,
-			dy:0,
-			dz:0
-			 });
-		printLine(id);
-		Ports.update({"_id": port0._id}, {$push: {lines: id }});
-		printPort(port0._id);
-		Ports.update({"_id": port1._id}, {$push: {lines: id }});
-		printPort(port1._id);
-		var line = Lines.findOne(id);
-		renderLine(Lines.find().count() - 1, line);
-	} else {
-		console.log("PORT MISSING", port0, port1);
-	}
-    },
-    'get': function(event) {
-	var ti =  computeInfo(event);
-	var line = Lines.findOne(ti.id);
-	if (typeof line === 'undefined' && ti.type != 'line') {
-	    line = null;
-	}
-	return line;
-    },
-    'render': function(index, line) {
-	updateLine(index, line._id, 0, 0, 0, false);
-    },
-/*
-    'stop': function(line) {
-	if (typeof line !== 'undefined' && line !== null) {
-	    Template.seenports = {};
-	    updateLine(0, line._id, 0, 0, 0, true);
-	}
-	Template.currentFunction.record({command:'stop', object:line});
-    },
-*/
-    'move': function(type, event, ui) {
-	var line = getLine(event);
-	if (typeof line !== 'undefined' && line !== null) {
-	    Template.seenports = {};
-	    var dx = ui.offset.x;
-	    var dy = ui.offset.y;
-	    var dz = ui.offset.z;
-	    console.log("delta", dx, dy, dz, ui);
-	    updateLine(0, line._id, dx, dy, dz, true);
-	    updateLine(0, line._id, 0, 0, 0, true);
-	}
-    },
-    'update': function(index, line_id, dx, dy, dz, updatePorts) {
-	console.log('dxyz', dx, dy, dz);
-	var line = Lines.findOne(line_id);
-	if (typeof line !== 'undefined') {
-		var port0 = Ports.findOne(line.port0);
-		var port1 = Ports.findOne(line.port1);
-		if (typeof port0 !== 'undefined' && typeof port1 !== 'undefined') {
-			// update as long as port being passed in is not the port
-			if (updatePorts) {
-				port0 = updatePort(0, port0, dx, dy, dz);
-				port1 = updatePort(1, port1, dx, dy, dz);
-			}
-			var x1 = port0.x;
-			var y1 = port0.y;
-			var z1 = port0.z;
-			var x3 = port1.x;
-			var y3 = port1.y;
-			var z3 = port1.z;
-			var x2 = (x1+x3)/2;
-			var y2 = (y1+y3)/2;
-			var z2 = (z1+z3)/2;
-			var update = Lines.update({"_id": line_id}, {$set: {
-				x:-dx, y:-dy, z:-dz,
-				x1: x1, y1: y1, z1: z1,
-				x2: x2, y2: y2, z2: z2,
-				x3: x3, y3: y3, z3: z3
-			}});
-			// printLine(line._id);
-			if (update === 0) {
-				// toss it
-				console.log("delete", line_id);
-				deleteLine(0, line_id);
-			}
-		}
-	} else {
-		console.log("Bad line", line_id);
-		printLine(line_id);
-		deleteLine(0, line_id);
-	}
-		
-    },
-    'delete': function(index, line_id) {
-	if (typeof line_id != 'undefined' && line_id !== null) {
-	    console.log("Removing line",line_id);
-	    Lines.remove({"_id": line_id});
-	    // TODO delete from ports
-	} else {
-	    console.log("Couldn't remove line");
-	}
+// --- Template helpers ---
+Template.json.helpers({ isDraggable() { return activeTool.get() === 'drag'; } });
+Template.port.helpers({ isDraggable() { return activeTool.get() === 'drag'; } });
+
+// --- Action Functions (Unchanged) ---
+function makeJson(position) {
+  const id = Jsons.insert({ x: position.x, y: position.y, z: 0, data: "{}", ports: [] });
+  Jsons.update(id, { $set: { title: id } });
+}
+function deleteJson(jsonId) {
+  const json = Jsons.findOne(jsonId);
+  if (json) {
+    (json.ports || []).forEach(portId => deletePort(portId));
+    Jsons.remove(jsonId);
+  }
+}
+function makePort(jsonId, type) {
+  const json = Jsons.findOne(jsonId);
+  if (!json) return;
+  const portCount = Ports.find({ json_id: jsonId, type: type }).count();
+  const offx = (type === 'input') ? -12 : 12;
+  const offy = 15 - (portCount * 5);
+  const portId = Ports.insert({
+    type,
+    json_id: jsonId,
+    x: json.x + offx,
+    y: json.y + offy,
+    z: json.z || 0,
+    color: (type === 'input') ? '0 1 0' : '0 0 1',
+    lines: []
+  });
+  Jsons.update(jsonId, { $push: { ports: portId } });
+}
+function deletePort(portId) {
+  const port = Ports.findOne(portId);
+  if (port) {
+    (port.lines || []).forEach(lineId => deleteLine(lineId));
+    Jsons.update(port.json_id, { $pull: { ports: portId } });
+    Ports.remove(portId);
+  }
+}
+function handlePortConnection(portId) {
+  const port = Ports.findOne(portId);
+  if (!port) return;
+  if (!portConnectionState.port0) {
+    portConnectionState.port0 = port;
+  } else {
+    const port0 = portConnectionState.port0;
+    const port1 = port;
+    if (port0._id !== port1._id && port0.type !== port1.type) {
+      makeLine(port0, port1);
     }
-});
-
-});
-
-var ui = {};
-ui.position = {};
-ui.originalPosition = {};
-ui.offset = {};
-
-////////////////  Jquery helpers /////////////////////////////
-
-function computeInfo(event) {
-	if (typeof event.target === 'object') {
-		var id = event.target.id;
-		var sl = id.indexOf('_');
-		if (sl >= 1) {
-			var type = id.substring(0,sl);
-			var id = id.substring(sl+1);
-		} else {
-			var type = event.target.class || 'UNKNOWN';
-		}
-	} else {
-		type = "INIT";
-		id = "000";
-	}
-	return { type: type, id: id };
+    portConnectionState = { port0: null };
+  }
 }
-
-function getJsonInput(json_id) {
-    return '#file';
-}
-
-function getJsonFromPort(port) {
-    return $('#json_' + port.json_id);
-}
-
-function getTextFromJson(json_id) {
-    return document.querySelector('#text_' + json_id).getAttribute("string");
-}
-
-function getPortDiv(port) {
-    var portDiv = $("#port_" + port._id);
-    return portDiv;
-}
-
-
-function CurrentFunction() {
-	this.context = {name: 'initialize', func: null };
-	this.recording = [];
-};
-
-
-CurrentFunction.prototype = {
-    setFunction : function(name, func) {
-	this.context.func = func;
-	this.context.name = name;
-    },
-    callFunction : function(event) {
-	if (typeof this.context !== 'object') {
-	    console.error("call SetFunction before calling callFunction");
-	} else {
-	    // record it before it's played in case we are switching recorders
-	    this.record({command:this.context.name, event:event});
-	    if (this.context.func != null) {
-		this.context.func(event);
-	    }
-	}
-    },
-    setRecorder : function(callback) {
-	if (typeof callback === 'function') {
-	    while (rec = this.recording.shift()) {
-		// console.log(rec);
-		if (typeof callback === 'function') {
-		    if (!callback(rec)) {
-			console.log("Callback failed. Keeping in buffer");
-			this.recording.unshift(rec);
-			break;
-		    }
-		}
-	    }
-	    // after we are through processing, set it to this
-	}
-	// this may set the callback to null.
-	this.callback = callback;
-    },
-    record : function(rec) {
-	// console.log(rec);
-	if (typeof this.callback === 'function') {
-	    if (this.callback(rec)) {
-		return true;
-	    }
-	}
-	console.log("Callback failed. Keeping in buffer");
-	this.recording.push(rec);
-	return false;
-    }
-    
-};
-
-Template.currentFunction = new CurrentFunction();
-
-var port0 = null;
-var port1 = null;
-var json0 = null;
-var json1 = null;
-
-///////// JSON /////////////////////////
-
-function loadJson(json_id) {
-    return Template.json.__helpers.get('load')(json_id);
-}
-
-function resetJson(event) {
-    return Template.json.__helpers.get('reset')(event);
-}
-
-function makeJson(event) {
-    return Template.json.__helpers.get('make')(event);
-}
-
-function getJson (event) {
-    return Template.json.__helpers.get('get')(event);
-}
-
-function renderJson(index, value) {
-    Template.json.__helpers.get('render')(index, value);
-}
-
-function startEditor(json) {
-    return Template.json.__helpers.get('edit')(json);
-}
-
-/*
-function stopJson(json) {
-    Template.json.__helpers.get('stop')(json);
-}
-*/
-
-function moveJson(type, event, ui) {
-    Template.json.__helpers.get('move')(type, event, ui);
-}
-
-function deleteJson(json) {
-    Template.json.__helpers.get('delete')(json);
-}
-
-//////////////PORT////////////////////
-
-function makePort(json, type) {
-    return Template.port.__helpers.get('make')(json, type);
-};
-
-function getPort (event) {
-    return Template.port.__helpers.get('get')(event);
-}
-
-function renderPort(index, port_id) {
-    Template.port.__helpers.get('render')(index, port_id);
-}
-
-function blaze(position, template, port, parent) {
-    Template.port.__helpers.get('blaze')(position, template, port, parent);
-}
-
-/*
-function stopPort(port) {
-    Template.port.__helpers.get('stop')(port);
-}
-*/
-
-function movePort(type, event, ui) {
-    Template.port.__helpers.get('move')(type, event, ui);
-}
-
-function deletePort(index, port_id) {
-    Template.port.__helpers.get('delete')(index, port_id);
-}
-
-////////////////////////
-function drawLines() {
-	$.each(Lines.find().fetch(), renderLine);
-}
-
-///  dx dy how much something else changed port
-function updatePort(index, port, dx, dy, dz) {
-	var bx = dx;
-	var by = dy;
-	var bz = dz;
-	if (typeof Template.seenports[port._id] === 'undefined') {
-		Template.seenports[port._id] = true;
-			// make a backup
-			// if no delta, cancel out old line delta
-			if (dx === 0 && dy === 0 && dz === 0) {
-				dx = port.dx;
-				dy = port.dy;
-				dz = port.dz;
-			}
-		var json = Jsons.findOne(port.json_id);
-		var offx = port.offx + dx - port.dx; 
-		var offy = port.offy + dy - port.dy;
-		var offz = port.offz + dz - port.dz;
-		var x = json.x + offx;
-		var y = json.y + offy;
-		var z = json.z + offz;
-		var updated = Ports.update({"_id": port._id}, {$set: {
-			x: x,
-			y: y,
-			z: z,
-			dx: bx,
-			dy: by,
-			dz: bz,
-			offx: offx,
-			offy: offy,
-			offz: offz
-		}});
-		// printPort(port._id);
-		if (updated !== 1) {
-			alert("Something wrong with update on", updated, "documents");
-		}
-	} else {
-		console.log("Already seen", index, port._id);
-	}
-	port = Ports.findOne(port._id);
-	if (typeof port.lines !== 'undefined') {
-		$.each(port.lines, function(index, line_id) {
-			updateLine(index, line_id, 0, 0, 0, false);
-		});
-	}
-	return port;
-}
-
-Template.seenports = {};
-
-
-function getLine (event) {
-    return Template.line.__helpers.get('get')(event);
-}
-
-
-/*
-function stopLine(obj) {
-    Template.line.__helpers.get('stop')(obj);
-}
-*/
-
-function renderLine(index, line) {
-    Template.line.__helpers.get('render')(index, line);
-}
-
-function updateLine(index, line_id, dx, dy, dz, updatePorts) {
-    Template.line.__helpers.get('update')(index, line_id, dx, dy, dz, updatePorts);
-}
-
 function makeLine(port0, port1) {
-    return Template.line.__helpers.get('make')(port0, port1);
+    const lineId = Lines.insert({
+      port0: port0._id,
+      port1: port1._id
+    });
+    Ports.update(port0._id, { $push: { lines: lineId } });
+    Ports.update(port1._id, { $push: { lines: lineId } });
 }
-
-function moveLine(type, event, ui) {
-    Template.line.__helpers.get('move')(type, event, ui);
-}
-
-function deleteLine(index, line_id) {
-    Template.line.__helpers.get('delete')(index, line_id);
-}
-
-function printLine(line_id) {
-	var line = Lines.findOne(line_id);
-	//console.log("line", line);
-}
-
-function printJson(json_id) {
-	var json = Jsons.findOne(json_id);
-	//console.log("json", json);
-}
-
-function printPort(port_id) {
-	var port = Ports.findOne(port_id);
-	//console.log("port", port);
-}
-
-/*
-Template.stop = function(obj) {
-	if (obj.type === '.json') {
-	    stopJson(obj);
-	} else if (obj.type === '.port') {
-	    stopPort(obj);
-	} else if (obj.type === '.line') {
-	    stopLine(obj);
-	}
-}
-*/
-
-Template.set = function(event, obj) {
-	event.target.id = obj.id;
-	// do offset before changing the position
-	ui.position.x = obj.x;
-	ui.position.y = obj.y;
-	ui.position.z = obj.z;
-	ui.offset.x = ui.position.x - ui.originalPosition.x;
-	ui.offset.y = ui.position.y - ui.originalPosition.y;
-	ui.offset.z = ui.position.z - ui.originalPosition.z;
-	if (obj.type === '.json') {
-	    moveJson(obj.type, event, ui);
-	} else if (obj.type === '.port') {
-	    movePort(obj.type, event, ui);
-	} else if (obj.type === '.line') {
-	    moveLine(obj.type, event, ui);
-	}
-}
-
-Template.get = function(event) {
-	var ti = computeInfo(event);
-	var obj = null;
-	if (ti.type === 'json') {
-		obj = getJson(event);
-		obj.type = ".json";
-	} else if (ti.type === 'port') {
-		obj = getPort(event);
-		obj.type = ".port";
-	} else if (ti.type === 'line') {
-		obj = getLine(event);
-		obj.type = ".line";
-	}
-	ui.offset.x = 0;
-	ui.offset.y = 0;
-	ui.offset.z = 0;
-	ui.position.x = obj.x;
-	ui.position.y = obj.y;
-	ui.position.z = obj.z;
-	ui.originalPosition.x = obj.x;
-	ui.originalPosition.y = obj.y;
-	ui.originalPosition.z = obj.z;
-	obj.id = ti.id;
-	return obj;
+function deleteLine(lineId) {
+    const line = Lines.findOne(lineId);
+    if (line) {
+        Ports.update(line.port0, { $pull: { lines: lineId } });
+        Ports.update(line.port1, { $pull: { lines: lineId } });
+        Lines.remove(lineId);
+    }
 }

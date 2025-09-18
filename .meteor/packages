@@ -15,3 +15,5 @@ mongo@2.1.4
 jquery
 templating
 blaze
+reactive-var
+meteortesting:mocha
