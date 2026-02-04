@@ -3,17 +3,17 @@
   "private": true,
   "scripts": {
     "env": "TEST_BROWSER_DRIVER=chrome",
-    "test-once":            "meteor test --once --driver-package meteortesting:mocha",
-    "test-watch":           "meteor test --driver-package meteortesting:mocha",
-    "test-app-once":        "meteor test --full-app --once --driver-package meteortesting:mocha",
-    "test-app-watch":       "meteor test --full-app --driver-package meteortesting:mocha",
+    "test-once": "meteor test --once --driver-package meteortesting:mocha",
+    "test-watch": "meteor test --driver-package meteortesting:mocha",
+    "test-app-once": "meteor test --full-app --once --driver-package meteortesting:mocha",
+    "test-app-watch": "meteor test --full-app --driver-package meteortesting:mocha",
     "start": "meteor run"
   },
   "dependencies": {
-    "@babel/runtime": "^7.23.6",
+    "@babel/runtime": "^7.28.6",
+    "browserify": "^17.0.1",
     "jquery": "^3.7.1",
     "meteor-node-stubs": "*",
-    "browserify": "^17.0.1",
     "x3dom": "^1.8.3"
   },
   "meteor": {
