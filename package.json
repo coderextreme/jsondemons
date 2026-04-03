@@ -10,11 +10,14 @@
     "start": "meteor run"
   },
   "dependencies": {
-    "@babel/runtime": "^7.28.6",
-    "browserify": "^17.0.1",
-    "jquery": "^3.7.1",
+    "@babel/runtime": "7.29.2",
+    "browserify": "17.0.1",
+    "jquery": "3.7.1",
     "meteor-node-stubs": "*",
-    "x3dom": "^1.8.3"
+    "x3dom": "1.8.3"
+  },
+  "overrides": {
+    "elliptic": "file:elliptic"
   },
   "meteor": {
     "mainModule": {
@@ -23,6 +26,6 @@
     }
   },
   "devDependencies": {
-    "chai": "^6.0.1"
+    "chai": "6.0.1"
   }
 }
