@@ -11,9 +11,8 @@
   },
   "dependencies": {
     "@babel/runtime": "7.29.2",
-    "browserify": "17.0.1",
     "jquery": "3.7.1",
-    "meteor-node-stubs": "^1.2.27",
+    "meteor-node-stubs": "^1.2.32",
     "x3dom": "1.8.3"
   },
   "overrides": {
